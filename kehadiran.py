@@ -1,6 +1,7 @@
 import os
 import json
 import datetime
+import pytz
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup,
     ReplyKeyboardMarkup, KeyboardButton
@@ -41,6 +42,11 @@ user_state = {}
 # ======================
 # UTILS
 # ======================
+def get_today_malaysia():
+    tz = pytz.timezone("Asia/Kuala_Lumpur")
+    return datetime.datetime.now(tz).date()
+
+
 def get_students_by_class(kelas):
     records = sheet_murid.get_all_records()
     students = []
@@ -141,7 +147,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kelas = data.split("|")[1]
         students = get_students_by_class(kelas)
 
-        today = datetime.date.today()
+        today = get_today_malaysia()
         tarikh = today.strftime("%d/%m/%Y")
         hari = today.strftime("%A")
 
@@ -276,14 +282,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         state = user_state.get(user_id)
         kelas = state["semak_kelas"]
 
+        today = get_today_malaysia()
+
         if choice == "calendar":
-            today = datetime.date.today()
             state["calendar_year"] = today.year
             state["calendar_month"] = today.month
             await show_calendar(query, user_id)
             return
 
-        today = datetime.date.today()
         target_date = today.strftime("%d/%m/%Y") if choice == "today" else \
             (today - datetime.timedelta(days=1)).strftime("%d/%m/%Y")
 
