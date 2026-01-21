@@ -145,7 +145,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         records_kehadiran = sheet_kehadiran.get_all_records()
         records_murid = sheet_murid.get_all_records()
 
-        # Senarai murid RMT
         rmt_students = {}
         for r in records_murid:
             if "RMT" in str(r.get("Catatan", "")):
@@ -153,7 +152,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         rmt_absent = {}
 
-        # Cari tidak hadir hari ini
         for r in records_kehadiran:
             if r["Tarikh"] == tarikh and r["Tidak Hadir"]:
                 kelas = r["Kelas"]
@@ -167,7 +165,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             rmt_absent[kelas] = []
                         rmt_absent[kelas].append(name)
 
-        # Papar
         if not rmt_absent:
             await query.edit_message_text(
                 f"🎉 Semua murid RMT hadir hari ini.\n\n📅 {tarikh}"
@@ -237,79 +234,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_student_buttons(query, user_id)
         return
 
-    # ---------- SEMUA HADIR ----------
-    if data == "semua_hadir":
-        state = user_state.get(user_id)
-        if not state:
-            await query.edit_message_text("❌ Tiada data untuk disimpan.")
-            return
-
-        kelas = state["kelas"]
-        tarikh = state["tarikh"]
-        hari = state["hari"]
-        students = state["students"]
-
-        if already_recorded(kelas, tarikh):
-            await query.edit_message_text(
-                f"❌ Rekod kehadiran {kelas} untuk {tarikh} telah dicatat oleh guru lain."
-            )
-            user_state.pop(user_id, None)
-            return
-
-        total = len(students)
-
-        sheet_kehadiran.append_row([
-            tarikh, hari, kelas, total, total, ""
-        ])
-
-        msg = format_attendance(kelas, tarikh, hari, total, [])
-
-        await query.edit_message_text(
-            "✅ Kehadiran berjaya disimpan!\n\n" + msg
-        )
-
-        user_state.pop(user_id, None)
-        return
-
-    # ---------- SIMPAN ----------
-    if data == "simpan":
-        state = user_state.get(user_id)
-        if not state:
-            await query.edit_message_text("❌ Tiada data untuk disimpan.")
-            return
-
-        if len(state["absent"]) == 0:
-            await query.edit_message_text("⚠️ Tiada murid dipilih sebagai tidak hadir.")
-            return
-
-        kelas = state["kelas"]
-        tarikh = state["tarikh"]
-        hari = state["hari"]
-
-        if already_recorded(kelas, tarikh):
-            await query.edit_message_text(
-                f"❌ Rekod kehadiran {kelas} untuk {tarikh} telah dicatat oleh guru lain."
-            )
-            user_state.pop(user_id, None)
-            return
-
-        total = len(state["students"])
-        absent = state["absent"]
-        hadir = total - len(absent)
-
-        sheet_kehadiran.append_row([
-            tarikh, hari, kelas, hadir, total, ", ".join(absent)
-        ])
-
-        msg = format_attendance(kelas, tarikh, hari, total, absent)
-
-        await query.edit_message_text(
-            "✅ Kehadiran berjaya disimpan!\n\n" + msg
-        )
-
-        user_state.pop(user_id, None)
-        return
-
     # ---------- SEMAK ----------
     if data == "semak":
         records = sheet_murid.get_all_records()
@@ -345,6 +269,47 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         target_date = today.strftime("%d/%m/%Y") if choice == "today" else \
             (today - datetime.timedelta(days=1)).strftime("%d/%m/%Y")
+
+        await show_record_for_date(query, kelas, target_date)
+        return
+
+    # ---------- NAVIGASI BULAN ----------
+    if data.startswith("cal_nav|"):
+        _, year, month = data.split("|")
+
+        state = user_state.get(user_id)
+        if not state:
+            await query.edit_message_text("❌ Sila pilih kelas semula.")
+            return
+
+        year = int(year)
+        month = int(month)
+
+        if month == 0:
+            month = 12
+            year -= 1
+        elif month == 13:
+            month = 1
+            year += 1
+
+        state["calendar_year"] = year
+        state["calendar_month"] = month
+
+        await show_calendar(query, user_id)
+        return
+
+    # ---------- PILIH HARI ----------
+    if data.startswith("cal_day|"):
+        _, year, month, day = data.split("|")
+
+        target_date = f"{int(day):02d}/{int(month):02d}/{year}"
+
+        state = user_state.get(user_id)
+        if not state:
+            await query.edit_message_text("❌ Sila pilih kelas semula.")
+            return
+
+        kelas = state["semak_kelas"]
 
         await show_record_for_date(query, kelas, target_date)
         return
@@ -450,7 +415,7 @@ async def show_record_for_date(query, kelas, target_date):
             return
 
     keyboard = [
-        [InlineKeyboardButton("📅 Hari Ini", callback_data="semikan")],
+        [InlineKeyboardButton("📅 Hari Ini", callback_data="semak_tarikh|today")],
         [InlineKeyboardButton("📆 Semalam", callback_data="semak_tarikh|yesterday")],
         [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")]
     ]
