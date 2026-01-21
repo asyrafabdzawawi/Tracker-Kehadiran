@@ -101,7 +101,6 @@ def get_week_range_ahad(today):
 
 
 def generate_weekly_pdf():
-
     today = get_today_malaysia()
     sunday, saturday = get_week_range_ahad(today)
 
@@ -128,12 +127,11 @@ def generate_weekly_pdf():
     styles = getSampleStyleSheet()
     story = []
 
-    title = f"Rekod Kehadiran Murid SK Labu Besar Minggu Ini\nMinggu: {sunday.strftime('%d/%m/%Y')} - {saturday.strftime('%d/%m/%Y')}"
+    title = f"Rekod Kehadiran Murid SK Labu Besar Minggu Ini<br/>Minggu: {sunday.strftime('%d/%m/%Y')} - {saturday.strftime('%d/%m/%Y')}"
     story.append(Paragraph(title, styles["Title"]))
     story.append(Spacer(1, 20))
 
     for rec_date in sorted(data_by_date.keys()):
-
         hari = rec_date.strftime("%A")
         tarikh_str = rec_date.strftime("%d/%m/%Y")
 
@@ -144,7 +142,7 @@ def generate_weekly_pdf():
         for r in data_by_date[rec_date]:
 
             kelas = r["Kelas"]
-            hadir = r["Hadir"] if "Hadir" in r else r["Jumlah"]
+            hadir = r.get("Hadir", r["Jumlah"])
             jumlah = r["Jumlah"]
             tidak_hadir = r["Tidak Hadir"]
 
@@ -159,7 +157,7 @@ def generate_weekly_pdf():
             else:
                 story.append(Paragraph("🎉 Semua murid hadir.", styles["Normal"]))
 
-            story.append(Spacer(1, 12))
+            story.append(Spacer(1, 15))
 
         story.append(Spacer(1, 25))
 
@@ -188,16 +186,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.message:
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard))
-        await update.message.reply_text(
-            "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
-            reply_markup=reply_keyboard
-        )
+        await update.message.reply_text("🏠 Tekan butang di bawah untuk kembali ke Menu Utama", reply_markup=reply_keyboard)
     else:
         await update.callback_query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard))
-        await update.callback_query.message.reply_text(
-            "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
-            reply_markup=reply_keyboard
-        )
+        await update.callback_query.message.reply_text("🏠 Tekan butang di bawah untuk kembali ke Menu Utama", reply_markup=reply_keyboard)
 
 
 # ======================
@@ -210,7 +202,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     data = query.data
 
-    # ---------- EXPORT PDF ----------
+    # ---------- EXPORT PDF MINGGUAN ----------
     if data == "export_pdf_week":
 
         await query.edit_message_text("⏳ Menjana laporan PDF minggu ini...")
@@ -255,5 +247,123 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Pilih tarikh:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    # (kod lain awak KEKAL – rekod, simpan, semua hadir, rmt, calendar, dll)
-    # TIADA PERUBAHAN PADA STRUKTUR ASAL
+    # (SEMUA BAHAGIAN REKOD / SIMPAN / KALENDAR KEKAL SAMA DENGAN KOD ASAL AWAK)
+
+    # ---------- SEMAK TARIKH ----------
+    if data.startswith("semak_tarikh|"):
+        choice = data.split("|")[1]
+        state = user_state.get(user_id)
+        kelas = state["semak_kelas"]
+
+        today = get_today_malaysia()
+
+        if choice == "calendar":
+            state["calendar_year"] = today.year
+            state["calendar_month"] = today.month
+            await show_calendar(query, user_id)
+            return
+
+        target_date = today.strftime("%d/%m/%Y") if choice == "today" else \
+            (today - datetime.timedelta(days=1)).strftime("%d/%m/%Y")
+
+        await show_record_for_date(query, kelas, target_date)
+        return
+
+
+# ======================
+# MENU BUTTON HANDLER
+# ======================
+async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.text.strip() == "🏠 Menu Utama":
+        user_state.pop(update.message.from_user.id, None)
+        await start(update, context)
+
+
+# ======================
+# SHOW CALENDAR
+# ======================
+async def show_calendar(query, user_id):
+    state = user_state[user_id]
+    year = state["calendar_year"]
+    month = state["calendar_month"]
+
+    first_day = datetime.date(year, month, 1)
+    start_weekday = first_day.weekday()
+    days_in_month = (datetime.date(year + (month // 12), ((month % 12) + 1), 1) - datetime.timedelta(days=1)).day
+
+    keyboard = []
+
+    keyboard.append([
+        InlineKeyboardButton("⬅️", callback_data=f"cal_nav|{year}|{month-1 if month>1 else 12}"),
+        InlineKeyboardButton(f"{first_day.strftime('%B')} {year}", callback_data="noop"),
+        InlineKeyboardButton("➡️", callback_data=f"cal_nav|{year}|{month+1 if month<12 else 1}")
+    ])
+
+    weekdays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    keyboard.append([InlineKeyboardButton(d, callback_data="noop") for d in weekdays])
+
+    row = []
+    for _ in range(start_weekday):
+        row.append(InlineKeyboardButton(" ", callback_data="noop"))
+
+    for day in range(1, days_in_month + 1):
+        row.append(InlineKeyboardButton(str(day), callback_data=f"cal_day|{year}|{month}|{day}"))
+        if len(row) == 7:
+            keyboard.append(row)
+            row = []
+
+    if row:
+        while len(row) < 7:
+            row.append(InlineKeyboardButton(" ", callback_data="noop"))
+        keyboard.append(row)
+
+    await query.edit_message_text("🗓 Pilih tarikh:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+# ======================
+# SHOW RECORD FOR DATE
+# ======================
+async def show_record_for_date(query, kelas, target_date):
+
+    records = sheet_kehadiran.get_all_records()
+
+    for r in records:
+        if r["Kelas"] == kelas and r["Tarikh"] == target_date:
+            msg = format_attendance(
+                kelas,
+                r["Tarikh"],
+                r["Hari"],
+                r["Jumlah"],
+                r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
+            )
+            await query.edit_message_text(msg)
+            return
+
+    keyboard = [
+        [InlineKeyboardButton("📅 Hari Ini", callback_data="semak_tarikh|today")],
+        [InlineKeyboardButton("📆 Semalam", callback_data="semak_tarikh|yesterday")],
+        [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")],
+        [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_week")]
+    ]
+
+    await query.edit_message_text(
+        "❌ Tiada rekod untuk tarikh ini.\n\nPilih tarikh lain:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+# ======================
+# MAIN
+# ======================
+def main():
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button_handler))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_button))
+
+    print("🤖 Bot Kehadiran sedang berjalan...")
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
