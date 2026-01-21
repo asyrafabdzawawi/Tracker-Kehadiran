@@ -509,9 +509,6 @@ async def export_pdf_weekly(query):
 
     records = sheet_kehadiran.get_all_records()
 
-    # susun ikut tarikh, kemudian kelas
-    class_order = sorted(set(r["Kelas"] for r in records))
-
     styles = getSampleStyleSheet()
     file_path = "/tmp/Rekod_Kehadiran_Mingguan.pdf"
     doc = SimpleDocTemplate(file_path)
@@ -532,24 +529,42 @@ async def export_pdf_weekly(query):
             continue
 
         ada_data = True
+
+        # Tajuk hari
         story.append(Paragraph(f"{hari} - {tarikh}", styles["Heading2"]))
+        story.append(Paragraph("=" * 70, styles["Normal"]))
         story.append(Spacer(1, 8))
 
-        # susun ikut kelas
+        # Susun ikut kelas
         daily_sorted = sorted(daily, key=lambda x: x["Kelas"])
 
         for r in daily_sorted:
             absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
 
-            text = format_attendance(
-                r["Kelas"],
-                r["Tarikh"],
-                r["Hari"],
-                int(r["Jumlah"]),
-                absent
-            ).replace("\n", "<br/>")
+            hadir = int(r["Jumlah"]) - len(absent)
 
-            story.append(Paragraph(text, styles["BodyText"]))
+            # Garis pemisah atas kelas
+            story.append(Paragraph("-" * 70, styles["Normal"]))
+
+            # Header kelas
+            story.append(Paragraph(f"Kelas : {r['Kelas']}", styles["Heading3"]))
+            story.append(Spacer(1, 4))
+
+            # Kehadiran
+            story.append(Paragraph(f"Kehadiran : {hadir} / {r['Jumlah']}", styles["Normal"]))
+            story.append(Spacer(1, 6))
+
+            # Tidak hadir
+            if absent:
+                story.append(Paragraph(f"Tidak Hadir ({len(absent)} murid)", styles["Normal"]))
+                for i, n in enumerate(absent, 1):
+                    story.append(Paragraph(f"{i}. {n}", styles["Normal"]))
+            else:
+                story.append(Paragraph("Semua murid hadir", styles["Normal"]))
+
+            # Garis pemisah bawah kelas
+            story.append(Spacer(1, 6))
+            story.append(Paragraph("-" * 70, styles["Normal"]))
             story.append(Spacer(1, 12))
 
     if not ada_data:
@@ -563,6 +578,7 @@ async def export_pdf_weekly(query):
         filename="Rekod_Kehadiran_Mingguan.pdf",
         caption="📄 Rekod Kehadiran Mingguan"
     )
+
 
 # ======================
 # MENU BUTTON HANDLER
