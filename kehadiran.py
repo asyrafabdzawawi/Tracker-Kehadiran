@@ -348,15 +348,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")]
     ]
 
-    # ❌ jangan edit mesej lama
-    # await query.edit_message_text(...)
-
-    # ✅ HANTAR MESEJ BARU (UX STABIL)
-    await query.message.reply_text(
-        f"🏫 {kelas}\n\nPilih tarikh:",
+    # 🔴 FIX UX: edit mesej yang baru ditekan (tak lompat, tak scroll)
+    await query.message.edit_text(
+        "Pilih tarikh:",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
     return
+
 
 
     # ---------- SEMAK TARIKH ----------
