@@ -506,6 +506,8 @@ async def show_record_for_date(query, kelas, target_date):
 async def export_pdf_weekly(query):
 
     today = get_today_malaysia()
+
+    # Minggu Ahad - Sabtu
     start = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
     end = start + datetime.timedelta(days=6)
 
@@ -515,20 +517,23 @@ async def export_pdf_weekly(query):
     file_path = "/tmp/Rekod_Kehadiran_Mingguan.pdf"
     doc = SimpleDocTemplate(file_path)
 
-    # Tambah logo sekolah
+    story = []   # 🔴 PENTING: story mesti wujud dulu
+
+    # ===== TAJUK UTAMA =====
+    story.append(Paragraph("Rekod Kehadiran Murid SK Labu Besar Minggu Ini", styles["Title"]))
+    story.append(Spacer(1, 12))
+
+    # ===== LOGO SEKOLAH =====
     logo_path = "logo_sklb.png"
     if os.path.exists(logo_path):
         img = Image(logo_path, width=80, height=80)
         img.hAlign = 'CENTER'
         story.append(img)
-        story.append(Spacer(1, 10))
-
-    story = []
-    story.append(Paragraph("Rekod Kehadiran Murid SK Labu Besar Minggu Ini", styles["Title"]))
-    story.append(Spacer(1, 12))
+        story.append(Spacer(1, 15))
 
     ada_data = False
 
+    # ===== LOOP SETIAP HARI =====
     for i in range(7):
         day = start + datetime.timedelta(days=i)
         tarikh = day.strftime("%d/%m/%Y")
@@ -540,56 +545,54 @@ async def export_pdf_weekly(query):
 
         ada_data = True
 
-        # Tajuk hari (sekali sahaja untuk section hari itu)
-        story.append(Paragraph(f"{hari} - {tarikh}", styles["Heading2"]))
-        story.append(Paragraph("=" * 70, styles["Normal"]))
+        # Tajuk hari
+        story.append(Paragraph(f"{hari} : {tarikh}", styles["Heading2"]))
+        story.append(Paragraph("-" * 80, styles["Normal"]))
         story.append(Spacer(1, 8))
 
-        # Susun ikut kelas
+        # Susun ikut kelas (alphabet)
         daily_sorted = sorted(daily, key=lambda x: x["Kelas"])
 
         for r in daily_sorted:
             absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
             hadir = int(r["Jumlah"]) - len(absent)
 
-            # Garis pemisah atas kelas
-            story.append(Paragraph("-" * 70, styles["Normal"]))
-
             # Nama kelas
             story.append(Paragraph(f"Kelas : {r['Kelas']}", styles["Heading3"]))
-
-            # Baris hari + tarikh (seperti diminta)
-            story.append(Paragraph(f"{hari} : {tarikh}", styles["Normal"]))
             story.append(Spacer(1, 4))
 
             # Kehadiran
             story.append(Paragraph(f"Kehadiran : {hadir} / {r['Jumlah']}", styles["Normal"]))
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 4))
 
             # Tidak hadir
             if absent:
                 story.append(Paragraph(f"Tidak Hadir ({len(absent)} murid)", styles["Normal"]))
-                for i, n in enumerate(absent, 1):
-                    story.append(Paragraph(f"{i}. {n}", styles["Normal"]))
+                for idx, name in enumerate(absent, 1):
+                    story.append(Paragraph(f"{idx}. {name}", styles["Normal"]))
             else:
                 story.append(Paragraph("Semua murid hadir", styles["Normal"]))
 
-            # Garis pemisah bawah kelas
+            # Garis pemisah kelas
             story.append(Spacer(1, 6))
-            story.append(Paragraph("-" * 70, styles["Normal"]))
+            story.append(Paragraph("-" * 80, styles["Normal"]))
             story.append(Spacer(1, 12))
 
+    # Kalau tiada data langsung
     if not ada_data:
-        await query.edit_message_text("❌ Tiada data minggu ini.")
+        await query.edit_message_text("❌ Tiada data kehadiran untuk minggu ini.")
         return
 
+    # Bina PDF
     doc.build(story)
 
+    # Hantar PDF ke Telegram
     await query.message.reply_document(
         document=open(file_path, "rb"),
         filename="Rekod_Kehadiran_Mingguan.pdf",
         caption="📄 Rekod Kehadiran Mingguan"
     )
+
 
 
 # ======================
