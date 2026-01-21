@@ -530,7 +530,7 @@ async def export_pdf_weekly(query):
 
         ada_data = True
 
-        # Tajuk hari
+        # Tajuk hari (sekali sahaja untuk section hari itu)
         story.append(Paragraph(f"{hari} - {tarikh}", styles["Heading2"]))
         story.append(Paragraph("=" * 70, styles["Normal"]))
         story.append(Spacer(1, 8))
@@ -540,14 +540,16 @@ async def export_pdf_weekly(query):
 
         for r in daily_sorted:
             absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
-
             hadir = int(r["Jumlah"]) - len(absent)
 
             # Garis pemisah atas kelas
             story.append(Paragraph("-" * 70, styles["Normal"]))
 
-            # Header kelas
+            # Nama kelas
             story.append(Paragraph(f"Kelas : {r['Kelas']}", styles["Heading3"]))
+
+            # Baris hari + tarikh (seperti diminta)
+            story.append(Paragraph(f"{hari} : {tarikh}", styles["Normal"]))
             story.append(Spacer(1, 4))
 
             # Kehadiran
