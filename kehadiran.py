@@ -2,6 +2,7 @@ import os
 import json
 import datetime
 import pytz
+from reportlab.platypus import Image
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup,
     ReplyKeyboardMarkup, KeyboardButton
@@ -512,6 +513,14 @@ async def export_pdf_weekly(query):
     styles = getSampleStyleSheet()
     file_path = "/tmp/Rekod_Kehadiran_Mingguan.pdf"
     doc = SimpleDocTemplate(file_path)
+
+    # Tambah logo sekolah
+    logo_path = "logo_sklb.png"
+    if os.path.exists(logo_path):
+        img = Image(logo_path, width=80, height=80)
+        img.hAlign = 'CENTER'
+        story.append(img)
+        story.append(Spacer(1, 10))
 
     story = []
     story.append(Paragraph("Rekod Kehadiran Murid SK Labu Besar Minggu Ini", styles["Title"]))
