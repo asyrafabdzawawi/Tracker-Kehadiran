@@ -545,12 +545,12 @@ async def export_pdf_weekly(query):
 
         ada_data = True
 
-        # Tajuk hari
+        # Tajuk hari (sekali sahaja untuk section hari)
         story.append(Paragraph(f"{hari} : {tarikh}", styles["Heading2"]))
         story.append(Paragraph("-" * 80, styles["Normal"]))
         story.append(Spacer(1, 8))
 
-        # Susun ikut kelas (alphabet)
+        # Susun ikut kelas
         daily_sorted = sorted(daily, key=lambda x: x["Kelas"])
 
         for r in daily_sorted:
@@ -559,6 +559,10 @@ async def export_pdf_weekly(query):
 
             # Nama kelas
             story.append(Paragraph(f"Kelas : {r['Kelas']}", styles["Heading3"]))
+            story.append(Spacer(1, 2))
+
+            # 🔹 BARIS TAMBAHAN (HARI : TARIKH DI BAWAH NAMA KELAS)
+            story.append(Paragraph(f"{hari} : {tarikh}", styles["Normal"]))
             story.append(Spacer(1, 4))
 
             # Kehadiran
