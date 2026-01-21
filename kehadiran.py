@@ -13,6 +13,10 @@ from telegram.ext import (
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+# PDF
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+
 # ======================
 # CONFIG (GUNA ENV)
 # ======================
@@ -45,7 +49,6 @@ def get_today_malaysia():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.datetime.now(tz).date()
 
-
 def get_students_by_class(kelas):
     records = sheet_murid.get_all_records()
     students = []
@@ -56,7 +59,6 @@ def get_students_by_class(kelas):
                 name += f" ({r['Catatan']})"
             students.append(name)
     return students
-
 
 def format_attendance(kelas, tarikh, hari, total, absent):
     hadir = total - len(absent)
@@ -78,14 +80,12 @@ def format_attendance(kelas, tarikh, hari, total, absent):
 
     return msg
 
-
 def already_recorded(kelas, tarikh):
     records = sheet_kehadiran.get_all_records()
     for r in records:
         if r["Kelas"] == kelas and r["Tarikh"] == tarikh:
             return True
     return False
-
 
 # ======================
 # START / MENU UTAMA
@@ -125,7 +125,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=reply_keyboard
         )
 
-
 # ======================
 # BUTTON HANDLER
 # ======================
@@ -138,7 +137,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ---------- SEMAK RMT HARI INI ----------
     if data == "semak_rmt_today":
-
         today = get_today_malaysia()
         tarikh = today.strftime("%d/%m/%Y")
 
@@ -324,10 +322,19 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "semak":
         records = sheet_murid.get_all_records()
         kelas_list = sorted(set(r["Kelas"] for r in records))
+
         keyboard = [[InlineKeyboardButton(k, callback_data=f"semak_kelas|{k}")] for k in kelas_list]
+        keyboard.append([InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")])
+
         await query.edit_message_text("Pilih kelas untuk semak:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
+    # ---------- EXPORT PDF ----------
+    if data == "export_pdf_weekly":
+        await export_pdf_weekly(query)
+        return
+
+    # ---------- PILIH KELAS SEMAK ----------
     if data.startswith("semak_kelas|"):
         kelas = data.split("|")[1]
         user_state[user_id] = {"semak_kelas": kelas}
@@ -335,11 +342,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [InlineKeyboardButton("📅 Hari Ini", callback_data="semak_tarikh|today")],
             [InlineKeyboardButton("📆 Semalam", callback_data="semak_tarikh|yesterday")],
-            [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")]
+            [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")],
+            [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")]
         ]
         await query.edit_message_text("Pilih tarikh:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
+    # ---------- SEMAK TARIKH ----------
     if data.startswith("semak_tarikh|"):
         choice = data.split("|")[1]
         state = user_state.get(user_id)
@@ -364,10 +373,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _, year, month = data.split("|")
 
         state = user_state.get(user_id)
-        if not state:
-            await query.edit_message_text("❌ Sila pilih kelas semula.")
-            return
-
         year = int(year)
         month = int(month)
 
@@ -391,24 +396,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         target_date = f"{int(day):02d}/{int(month):02d}/{year}"
 
         state = user_state.get(user_id)
-        if not state:
-            await query.edit_message_text("❌ Sila pilih kelas semula.")
-            return
-
         kelas = state["semak_kelas"]
 
         await show_record_for_date(query, kelas, target_date)
         return
-
-
-# ======================
-# MENU BUTTON HANDLER
-# ======================
-async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.text.strip() == "🏠 Menu Utama":
-        user_state.pop(update.message.from_user.id, None)
-        await start(update, context)
-
 
 # ======================
 # SHOW STUDENT BUTTONS
@@ -421,10 +412,7 @@ async def show_student_buttons(query, user_id):
     students = state["students"]
     absent = state["absent"]
 
-    total = len(students)
-    hadir = total - len(absent)
-
-    msg = format_attendance(kelas, tarikh, hari, total, absent)
+    msg = format_attendance(kelas, tarikh, hari, len(students), absent)
 
     keyboard = []
     for n in students:
@@ -438,7 +426,6 @@ async def show_student_buttons(query, user_id):
     ])
 
     await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard))
-
 
 # ======================
 # SHOW CALENDAR
@@ -480,7 +467,6 @@ async def show_calendar(query, user_id):
 
     await query.edit_message_text("🗓 Pilih tarikh:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-
 # ======================
 # SHOW RECORD FOR DATE
 # ======================
@@ -503,7 +489,8 @@ async def show_record_for_date(query, kelas, target_date):
     keyboard = [
         [InlineKeyboardButton("📅 Hari Ini", callback_data="semak_tarikh|today")],
         [InlineKeyboardButton("📆 Semalam", callback_data="semak_tarikh|yesterday")],
-        [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")]
+        [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")],
+        [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")]
     ]
 
     await query.edit_message_text(
@@ -511,6 +498,79 @@ async def show_record_for_date(query, kelas, target_date):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+# ======================
+# EXPORT PDF MINGGUAN
+# ======================
+async def export_pdf_weekly(query):
+
+    today = get_today_malaysia()
+    start = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
+    end = start + datetime.timedelta(days=6)
+
+    records = sheet_kehadiran.get_all_records()
+
+    # susun ikut tarikh, kemudian kelas
+    class_order = sorted(set(r["Kelas"] for r in records))
+
+    styles = getSampleStyleSheet()
+    file_path = "/tmp/Rekod_Kehadiran_Mingguan.pdf"
+    doc = SimpleDocTemplate(file_path)
+
+    story = []
+    story.append(Paragraph("Rekod Kehadiran Murid SK Labu Besar Minggu Ini", styles["Title"]))
+    story.append(Spacer(1, 12))
+
+    ada_data = False
+
+    for i in range(7):
+        day = start + datetime.timedelta(days=i)
+        tarikh = day.strftime("%d/%m/%Y")
+        hari = day.strftime("%A")
+
+        daily = [r for r in records if r["Tarikh"] == tarikh]
+        if not daily:
+            continue
+
+        ada_data = True
+        story.append(Paragraph(f"{hari} - {tarikh}", styles["Heading2"]))
+        story.append(Spacer(1, 8))
+
+        # susun ikut kelas
+        daily_sorted = sorted(daily, key=lambda x: x["Kelas"])
+
+        for r in daily_sorted:
+            absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
+
+            text = format_attendance(
+                r["Kelas"],
+                r["Tarikh"],
+                r["Hari"],
+                int(r["Jumlah"]),
+                absent
+            ).replace("\n", "<br/>")
+
+            story.append(Paragraph(text, styles["BodyText"]))
+            story.append(Spacer(1, 12))
+
+    if not ada_data:
+        await query.edit_message_text("❌ Tiada data minggu ini.")
+        return
+
+    doc.build(story)
+
+    await query.message.reply_document(
+        document=open(file_path, "rb"),
+        filename="Rekod_Kehadiran_Mingguan.pdf",
+        caption="📄 Rekod Kehadiran Mingguan"
+    )
+
+# ======================
+# MENU BUTTON HANDLER
+# ======================
+async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.text.strip() == "🏠 Menu Utama":
+        user_state.pop(update.message.from_user.id, None)
+        await start(update, context)
 
 # ======================
 # MAIN
@@ -523,7 +583,6 @@ def main():
 
     print("🤖 Bot Kehadiran sedang berjalan...")
     app.run_polling()
-
 
 if __name__ == "__main__":
     main()
