@@ -26,7 +26,6 @@ scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
 ]
-
 creds_json = json.loads(os.environ.get("GOOGLE_CREDS_JSON"))
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
 client = gspread.authorize(creds)
@@ -92,9 +91,11 @@ def already_recorded(kelas, tarikh):
 # START / MENU UTAMA
 # ======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     inline_keyboard = [
         [InlineKeyboardButton("📋 Rekod Kehadiran", callback_data="rekod")],
-        [InlineKeyboardButton("🔍 Semak Kehadiran", callback_data="semak")]
+        [InlineKeyboardButton("🔍 Semak Kehadiran", callback_data="semak")],
+        [InlineKeyboardButton("🍱 Semak RMT Hari Ini", callback_data="semak_rmt_today")]
     ]
 
     reply_keyboard = ReplyKeyboardMarkup(
@@ -110,13 +111,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text,
             reply_markup=InlineKeyboardMarkup(inline_keyboard)
         )
-
-        # ⬇️ DI SINI KITA TUKAR DARI #labubest KE TEKS CANTIK
         await update.message.reply_text(
             "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
             reply_markup=reply_keyboard
         )
-
     else:
         await update.callback_query.edit_message_text(
             text,
@@ -132,16 +130,69 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # BUTTON HANDLER
 # ======================
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
     data = query.data
 
+    # ---------- SEMAK RMT HARI INI ----------
+    if data == "semak_rmt_today":
+
+        today = get_today_malaysia()
+        tarikh = today.strftime("%d/%m/%Y")
+
+        records_kehadiran = sheet_kehadiran.get_all_records()
+        records_murid = sheet_murid.get_all_records()
+
+        # Senarai murid RMT
+        rmt_students = {}
+        for r in records_murid:
+            if "RMT" in str(r.get("Catatan", "")):
+                rmt_students[r["Nama Murid"]] = r["Kelas"]
+
+        rmt_absent = {}
+
+        # Cari tidak hadir hari ini
+        for r in records_kehadiran:
+            if r["Tarikh"] == tarikh and r["Tidak Hadir"]:
+                kelas = r["Kelas"]
+                absent_list = [x.strip() for x in r["Tidak Hadir"].split(",")]
+
+                for name in absent_list:
+                    clean_name = name.replace("(RMT)", "").strip()
+
+                    if clean_name in rmt_students:
+                        if kelas not in rmt_absent:
+                            rmt_absent[kelas] = []
+                        rmt_absent[kelas].append(name)
+
+        # Papar
+        if not rmt_absent:
+            await query.edit_message_text(
+                f"🎉 Semua murid RMT hadir hari ini.\n\n📅 {tarikh}"
+            )
+            return
+
+        msg = f"🍱 RMT Tidak Hadir Hari Ini\n📅 {tarikh}\n\n"
+        total = 0
+
+        for kelas, names in rmt_absent.items():
+            msg += f"🏫 {kelas}\n"
+            for i, n in enumerate(names, 1):
+                msg += f"{i}. {n}\n"
+                total += 1
+            msg += "\n"
+
+        msg += f"Jumlah RMT tidak hadir: {total} murid"
+
+        await query.edit_message_text(msg)
+        return
+
     # ---------- REKOD ----------
     if data == "rekod":
         records = sheet_murid.get_all_records()
         kelas_list = sorted(set(r["Kelas"] for r in records))
-
         keyboard = [[InlineKeyboardButton(k, callback_data=f"kelas|{k}")] for k in kelas_list]
         await query.edit_message_text("Pilih kelas:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
@@ -263,7 +314,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "semak":
         records = sheet_murid.get_all_records()
         kelas_list = sorted(set(r["Kelas"] for r in records))
-
         keyboard = [[InlineKeyboardButton(k, callback_data=f"semak_kelas|{k}")] for k in kelas_list]
         await query.edit_message_text("Pilih kelas untuk semak:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
@@ -296,23 +346,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         target_date = today.strftime("%d/%m/%Y") if choice == "today" else \
             (today - datetime.timedelta(days=1)).strftime("%d/%m/%Y")
 
-        await show_record_for_date(query, kelas, target_date)
-        return
-
-    # ---------- KALENDAR ----------
-    if data.startswith("cal_nav|"):
-        _, year, month = data.split("|")
-        state = user_state.get(user_id)
-        state["calendar_year"] = int(year)
-        state["calendar_month"] = int(month)
-        await show_calendar(query, user_id)
-        return
-
-    if data.startswith("cal_day|"):
-        _, year, month, day = data.split("|")
-        target_date = f"{int(day):02d}/{int(month):02d}/{year}"
-        state = user_state.get(user_id)
-        kelas = state["semak_kelas"]
         await show_record_for_date(query, kelas, target_date)
         return
 
@@ -401,7 +434,9 @@ async def show_calendar(query, user_id):
 # SHOW RECORD FOR DATE
 # ======================
 async def show_record_for_date(query, kelas, target_date):
+
     records = sheet_kehadiran.get_all_records()
+
     for r in records:
         if r["Kelas"] == kelas and r["Tarikh"] == target_date:
             msg = format_attendance(
@@ -415,7 +450,7 @@ async def show_record_for_date(query, kelas, target_date):
             return
 
     keyboard = [
-        [InlineKeyboardButton("📅 Hari Ini", callback_data="semak_tarikh|today")],
+        [InlineKeyboardButton("📅 Hari Ini", callback_data="semikan")],
         [InlineKeyboardButton("📆 Semalam", callback_data="semak_tarikh|yesterday")],
         [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")]
     ]
@@ -434,6 +469,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_button))
+
     print("🤖 Bot Kehadiran sedang berjalan...")
     app.run_polling()
 
