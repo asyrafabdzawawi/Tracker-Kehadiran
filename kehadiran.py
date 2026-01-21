@@ -20,7 +20,7 @@ TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 SHEET_ID = os.environ.get("SHEET_ID")
 
 # ======================
-# GOOGLE SHEET AUTH (GUNA ENV JSON)
+# GOOGLE SHEET AUTH
 # ======================
 scope = [
     "https://spreadsheets.google.com/feeds",
@@ -97,11 +97,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🔍 Semak Kehadiran", callback_data="semak")]
     ]
 
-    reply_keyboard = ReplyKeyboardMarkup(
-        [[KeyboardButton("🏠 Menu Utama")]],
-        resize_keyboard=True,
-        one_time_keyboard=False
-    )
+    menu_button = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🏠 Menu Utama", callback_data="menu")]
+    ])
 
     text = "Tracker Kehadiran Murid SK Labu Besar\n\nPilih menu:"
 
@@ -111,10 +109,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(inline_keyboard)
         )
 
-        # ⬇️ DI SINI KITA TUKAR DARI #labubest KE TEKS CANTIK
+        # Butang Menu Utama dalam message
         await update.message.reply_text(
-            "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
-            reply_markup=reply_keyboard
+            " ",
+            reply_markup=menu_button
         )
 
     else:
@@ -122,9 +120,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text,
             reply_markup=InlineKeyboardMarkup(inline_keyboard)
         )
+
         await update.callback_query.message.reply_text(
-            "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
-            reply_markup=reply_keyboard
+            " ",
+            reply_markup=menu_button
         )
 
 
@@ -136,6 +135,20 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     user_id = query.from_user.id
     data = query.data
+
+    # ---------- MENU UTAMA (AUTO CLEAR BIASA) ----------
+    if data == "menu":
+        user_state.pop(user_id, None)
+
+        # Padam screen semasa (clear biasa)
+        try:
+            await query.message.delete()
+        except:
+            pass
+
+        # Papar menu fresh
+        await start(update, context)
+        return
 
     # ---------- REKOD ----------
     if data == "rekod":
@@ -318,15 +331,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ======================
-# MENU BUTTON HANDLER
-# ======================
-async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.text.strip() == "🏠 Menu Utama":
-        user_state.pop(update.message.from_user.id, None)
-        await start(update, context)
-
-
-# ======================
 # SHOW STUDENT BUTTONS
 # ======================
 async def show_student_buttons(query, user_id):
@@ -433,7 +437,6 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_button))
     print("🤖 Bot Kehadiran sedang berjalan...")
     app.run_polling()
 
