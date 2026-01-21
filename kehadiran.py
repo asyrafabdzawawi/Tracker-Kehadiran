@@ -337,18 +337,23 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # ---------- PILIH KELAS SEMAK ----------
-    if data.startswith("semak_kelas|"):
-        kelas = data.split("|")[1]
-        user_state[user_id] = {"semak_kelas": kelas}
+   if data.startswith("semak_kelas|"):
+    kelas = data.split("|")[1]
+    user_state[user_id] = {"semak_kelas": kelas}
 
-        keyboard = [
-            [InlineKeyboardButton("📅 Hari Ini", callback_data="semak_tarikh|today")],
-            [InlineKeyboardButton("📆 Semalam", callback_data="semak_tarikh|yesterday")],
-            [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")],
-            [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")]
-        ]
-        await query.edit_message_text("Pilih tarikh:", reply_markup=InlineKeyboardMarkup(keyboard))
-        return
+    keyboard = [
+        [InlineKeyboardButton("📅 Hari Ini", callback_data="semak_tarikh|today")],
+        [InlineKeyboardButton("📆 Semalam", callback_data="semak_tarikh|yesterday")],
+        [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")],
+        [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")]
+    ]
+
+    # 🔴 FIX UX: edit mesej yang baru ditekan (tak lompat, tak scroll)
+    await query.message.edit_text(
+        "Pilih tarikh:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    return
 
     # ---------- SEMAK TARIKH ----------
     if data.startswith("semak_tarikh|"):
