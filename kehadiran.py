@@ -110,17 +110,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text,
             reply_markup=InlineKeyboardMarkup(inline_keyboard)
         )
+
+        # ⬇️ DI SINI KITA TUKAR DARI #labubest KE TEKS CANTIK
         await update.message.reply_text(
-            "#labubest",
+            "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
             reply_markup=reply_keyboard
         )
+
     else:
         await update.callback_query.edit_message_text(
             text,
             reply_markup=InlineKeyboardMarkup(inline_keyboard)
         )
         await update.callback_query.message.reply_text(
-            "🏠 Menu tersedia",
+            "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
             reply_markup=reply_keyboard
         )
 
