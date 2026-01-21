@@ -159,7 +159,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 for name in absent_list:
                     clean_name = name.replace("(RMT)", "").strip()
-
                     if clean_name in rmt_students:
                         if kelas not in rmt_absent:
                             rmt_absent[kelas] = []
@@ -232,6 +231,93 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if state:
             state["absent"] = []
         await show_student_buttons(query, user_id)
+        return
+
+    # ---------- SEMUA HADIR ----------
+    if data == "semua_hadir":
+        state = user_state.get(user_id)
+        if not state:
+            await query.edit_message_text("❌ Tiada data untuk disimpan.")
+            return
+
+        kelas = state["kelas"]
+        tarikh = state["tarikh"]
+        hari = state["hari"]
+        students = state["students"]
+
+        if already_recorded(kelas, tarikh):
+            await query.edit_message_text(
+                f"❌ Rekod kehadiran {kelas} untuk {tarikh} telah dicatat oleh guru lain."
+            )
+            user_state.pop(user_id, None)
+            return
+
+        total = len(students)
+
+        if total == 0:
+            await query.edit_message_text(
+                f"⚠️ Tiada murid dijumpai untuk kelas:\n\n🏫 {kelas}"
+            )
+            user_state.pop(user_id, None)
+            return
+
+        sheet_kehadiran.append_row([
+            tarikh, hari, kelas, total, total, ""
+        ])
+
+        msg = format_attendance(kelas, tarikh, hari, total, [])
+
+        await query.edit_message_text(
+            "✅ Kehadiran berjaya disimpan!\n\n" + msg
+        )
+
+        user_state.pop(user_id, None)
+        return
+
+    # ---------- SIMPAN ----------
+    if data == "simpan":
+        state = user_state.get(user_id)
+        if not state:
+            await query.edit_message_text("❌ Tiada data untuk disimpan.")
+            return
+
+        if len(state["absent"]) == 0:
+            await query.edit_message_text("⚠️ Tiada murid dipilih sebagai tidak hadir.")
+            return
+
+        kelas = state["kelas"]
+        tarikh = state["tarikh"]
+        hari = state["hari"]
+
+        if already_recorded(kelas, tarikh):
+            await query.edit_message_text(
+                f"❌ Rekod kehadiran {kelas} untuk {tarikh} telah dicatat oleh guru lain."
+            )
+            user_state.pop(user_id, None)
+            return
+
+        total = len(state["students"])
+        absent = state["absent"]
+        hadir = total - len(absent)
+
+        if total == 0:
+            await query.edit_message_text(
+                f"⚠️ Tiada murid dijumpai untuk kelas:\n\n🏫 {kelas}"
+            )
+            user_state.pop(user_id, None)
+            return
+
+        sheet_kehadiran.append_row([
+            tarikh, hari, kelas, hadir, total, ", ".join(absent)
+        ])
+
+        msg = format_attendance(kelas, tarikh, hari, total, absent)
+
+        await query.edit_message_text(
+            "✅ Kehadiran berjaya disimpan!\n\n" + msg
+        )
+
+        user_state.pop(user_id, None)
         return
 
     # ---------- SEMAK ----------
