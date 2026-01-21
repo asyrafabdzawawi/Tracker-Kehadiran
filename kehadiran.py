@@ -1,12 +1,7 @@
-
-# kehadiran.py
-# Versi Stabil + Export PDF Mingguan
-# Rekod Kehadiran Murid SK Labu Besar Minggu Ini
-
-import os
-import json
-import datetime
-import pytz
+# ======================
+# IMPORT
+# ======================
+import os, json, datetime, pytz
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup,
     ReplyKeyboardMarkup, KeyboardButton
@@ -17,12 +12,13 @@ from telegram.ext import (
 )
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+
+# PDF
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.pagesizes import A4
 
 # ======================
-# CONFIG
+# CONFIG (GUNA ENV)
 # ======================
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 SHEET_ID = os.environ.get("SHEET_ID")
@@ -53,16 +49,9 @@ def get_today_malaysia():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.datetime.now(tz).date()
 
-
-def get_week_range(today):
-    # Ahad hingga Sabtu
-    start = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
-    end = start + datetime.timedelta(days=6)
-    return start, end
-
-
 def format_attendance(kelas, tarikh, hari, total, absent):
     hadir = total - len(absent)
+
     msg = (
         f"🏫 {kelas}\n"
         f"📅 {hari}\n"
@@ -70,75 +59,21 @@ def format_attendance(kelas, tarikh, hari, total, absent):
         f"📊 Kehadiran\n"
         f"{hadir}/{total}\n"
     )
+
     if absent:
         msg += f"\n❌ Tidak Hadir ({len(absent)} murid)\n"
         for i, n in enumerate(absent, 1):
             msg += f"{i}. {n}\n"
     else:
         msg += "\n🎉 Semua murid hadir.\n"
+
     return msg
-
-
-# ======================
-# PDF EXPORT
-# ======================
-def generate_weekly_pdf():
-    today = get_today_malaysia()
-    start, end = get_week_range(today)
-
-    records = sheet_kehadiran.get_all_records()
-
-    doc = SimpleDocTemplate("/tmp/rekod_kehadiran_mingguan.pdf", pagesize=A4)
-    styles = getSampleStyleSheet()
-    story = []
-
-    title = "Rekod Kehadiran Murid SK Labu Besar Minggu Ini"
-    story.append(Paragraph(title, styles["Heading1"]))
-    story.append(Spacer(1, 12))
-
-    for i in range(7):
-        day = start + datetime.timedelta(days=i)
-        tarikh = day.strftime("%d/%m/%Y")
-        hari = day.strftime("%A")
-
-        daily_records = [r for r in records if r["Tarikh"] == tarikh]
-
-        if not daily_records:
-            continue
-
-        story.append(Paragraph(f"📅 {hari}", styles["Heading2"]))
-        story.append(Paragraph(f"🗓 {tarikh}", styles["Normal"]))
-        story.append(Spacer(1, 8))
-
-        for r in daily_records:
-            kelas = r["Kelas"]
-            hadir = r["Hadir"]
-            jumlah = r["Jumlah"]
-            tidak = r["Tidak Hadir"]
-
-            story.append(Paragraph(f"🏫 {kelas}", styles["Heading3"]))
-            story.append(Paragraph(f"📊 Kehadiran {hadir}/{jumlah}", styles["Normal"]))
-
-            if tidak:
-                names = tidak.split(",")
-                story.append(Paragraph(f"❌ Tidak Hadir ({len(names)} murid)", styles["Normal"]))
-                for idx, n in enumerate(names, 1):
-                    story.append(Paragraph(f"{idx}. {n}", styles["Normal"]))
-            else:
-                story.append(Paragraph("🎉 Semua murid hadir", styles["Normal"]))
-
-            story.append(Spacer(1, 12))
-
-        story.append(Spacer(1, 24))
-
-    doc.build(story)
-    return "/tmp/rekod_kehadiran_mingguan.pdf"
-
 
 # ======================
 # START
 # ======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     inline_keyboard = [
         [InlineKeyboardButton("📋 Rekod Kehadiran", callback_data="rekod")],
         [InlineKeyboardButton("🔍 Semak Kehadiran", callback_data="semak")],
@@ -147,42 +82,43 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_keyboard = ReplyKeyboardMarkup(
         [[KeyboardButton("🏠 Menu Utama")]],
-        resize_keyboard=True,
-        one_time_keyboard=False
+        resize_keyboard=True
     )
 
     text = "Tracker Kehadiran Murid SK Labu Besar\n\nPilih menu:"
 
     if update.message:
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard))
-        await update.message.reply_text("🏠 Tekan butang di bawah untuk kembali ke Menu Utama", reply_markup=reply_keyboard)
-
+        await update.message.reply_text("🏠 Tekan butang Menu Utama di bawah", reply_markup=reply_keyboard)
 
 # ======================
 # BUTTON HANDLER
 # ======================
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     query = update.callback_query
     await query.answer()
     data = query.data
 
-    # EXPORT PDF
-    if data == "export_pdf_week":
-        file_path = generate_weekly_pdf()
-        await context.bot.send_document(chat_id=query.message.chat_id, document=open(file_path, "rb"))
-        return
-
-    # SEMAK
+    # ---------- SEMAK ----------
     if data == "semak":
         records = sheet_murid.get_all_records()
         kelas_list = sorted(set(r["Kelas"] for r in records))
 
         keyboard = [[InlineKeyboardButton(k, callback_data=f"semak_kelas|{k}")] for k in kelas_list]
-        keyboard.append([InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_week")])
+
+        # ➕ TAMBAH EXPORT PDF DI SINI
+        keyboard.append([InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")])
 
         await query.edit_message_text("Pilih kelas untuk semak:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
+    # ---------- EXPORT PDF ----------
+    if data == "export_pdf_weekly":
+        await export_pdf_weekly(query)
+        return
+
+    # ---------- PILIH KELAS SEMAK ----------
     if data.startswith("semak_kelas|"):
         kelas = data.split("|")[1]
         user_state[query.from_user.id] = {"semak_kelas": kelas}
@@ -191,12 +127,80 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📅 Hari Ini", callback_data="semak_tarikh|today")],
             [InlineKeyboardButton("📆 Semalam", callback_data="semak_tarikh|yesterday")],
             [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")],
-            [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_week")]
+            [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")]
         ]
 
         await query.edit_message_text("Pilih tarikh:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
+# ======================
+# EXPORT PDF FUNCTION
+# ======================
+async def export_pdf_weekly(query):
+
+    today = get_today_malaysia()
+
+    # Cari Ahad minggu ini
+    start = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
+    end = start + datetime.timedelta(days=6)
+
+    records = sheet_kehadiran.get_all_records()
+
+    styles = getSampleStyleSheet()
+    file_path = "/tmp/Rekod_Kehadiran_Mingguan.pdf"
+    doc = SimpleDocTemplate(file_path)
+
+    story = []
+    story.append(Paragraph("Rekod Kehadiran Murid SK Labu Besar (Minggu Ini)", styles["Title"]))
+    story.append(Spacer(1, 12))
+
+    ada_data = False
+
+    for i in range(7):
+        day = start + datetime.timedelta(days=i)
+        tarikh = day.strftime("%d/%m/%Y")
+        hari = day.strftime("%A")
+
+        daily = [r for r in records if r["Tarikh"] == tarikh]
+
+        if not daily:
+            continue
+
+        ada_data = True
+        story.append(Paragraph(f"📅 {hari} - {tarikh}", styles["Heading2"]))
+
+        for r in daily:
+            absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
+
+            text = format_attendance(
+                r["Kelas"],
+                r["Tarikh"],
+                r["Hari"],
+                int(r["Jumlah"]),
+                absent
+            ).replace("\n", "<br/>")
+
+            story.append(Paragraph(text, styles["BodyText"]))
+            story.append(Spacer(1, 10))
+
+    if not ada_data:
+        await query.edit_message_text("❌ Tiada data kehadiran untuk minggu ini.")
+        return
+
+    doc.build(story)
+
+    await query.message.reply_document(
+        document=open(file_path, "rb"),
+        filename="Rekod_Kehadiran_Mingguan.pdf",
+        caption="📄 Rekod Kehadiran Mingguan"
+    )
+
+# ======================
+# MENU BUTTON HANDLER
+# ======================
+async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.text.strip() == "🏠 Menu Utama":
+        await start(update, context)
 
 # ======================
 # MAIN
@@ -205,10 +209,10 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_button))
 
     print("🤖 Bot Kehadiran sedang berjalan...")
     app.run_polling()
-
 
 if __name__ == "__main__":
     main()
