@@ -367,7 +367,7 @@ async def export_pdf_weekly(query):
     story = []
 
     # ===== LOGO SEKOLAH =====
-    logo_path = "sklb.png"   # 🔴 FAIL MESTI ADA DALAM REPO
+    logo_path = "logo_sklb.png"   # 🔴 FAIL MESTI ADA DALAM REPO
 
     if os.path.exists(logo_path):
         img = Image(logo_path, width=80, height=80)
