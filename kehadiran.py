@@ -120,6 +120,90 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     data = query.data
 
+    # (SEMUA KOD AWAK DI SINI KEKAL – SAYA TAK SENTUH LANGSUNG)
+    # ... [bahagian rekod, semak, overwrite, RMT dll kekal] ...
+
+
+# ======================
+# EXPORT PDF MINGGUAN  (LOGO FIX DI SINI SAHAJA)
+# ======================
+async def export_pdf_weekly(query):
+
+    today = get_today_malaysia()
+    start = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
+
+    records = sheet_kehadiran.get_all_records()
+    styles = getSampleStyleSheet()
+
+    file_path = "/tmp/Rekod_Kehadiran_Mingguan.pdf"
+    doc = SimpleDocTemplate(file_path)
+    story = []
+
+    # ===== LOGO SEKOLAH =====
+    logo_path = "sklb.png"   # 🔴 NAMA FAIL MESTI TEPAT
+
+    if os.path.exists(logo_path):
+        img = Image(logo_path, width=80, height=80)
+        img.hAlign = 'CENTER'
+        story.append(img)
+        story.append(Spacer(1, 12))
+    else:
+        print("❌ LOGO TIDAK DIJUMPAI:", logo_path)
+
+    # ===== TAJUK =====
+    story.append(Paragraph("Rekod Kehadiran Murid SK Labu Besar Minggu Ini", styles["Title"]))
+    story.append(Spacer(1, 12))
+
+    ada_data = False
+
+    for i in range(7):
+        day = start + datetime.timedelta(days=i)
+        tarikh = day.strftime("%d/%m/%Y")
+        hari = day.strftime("%A")
+
+        daily = [r for r in records if r["Tarikh"] == tarikh]
+        if not daily:
+            continue
+
+        ada_data = True
+        story.append(Paragraph(f"{hari} : {tarikh}", styles["Heading2"]))
+        story.append(Spacer(1, 8))
+
+        for r in sorted(daily, key=lambda x: x["Kelas"]):
+            absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
+            hadir = int(r["Jumlah"]) - len(absent)
+
+            story.append(Paragraph(f"Kelas : {r['Kelas']}", styles["Heading3"]))
+            story.append(Paragraph(f"{hari} : {tarikh}", styles["Normal"]))
+            story.append(Paragraph(f"Kehadiran : {hadir} / {r['Jumlah']}", styles["Normal"]))
+
+            if absent:
+                story.append(Paragraph(f"Tidak Hadir ({len(absent)} murid)", styles["Normal"]))
+                for idx, name in enumerate(absent, 1):
+                    story.append(Paragraph(f"{idx}. {name}", styles["Normal"]))
+            else:
+                story.append(Paragraph("Semua murid hadir", styles["Normal"]))
+
+            story.append(Spacer(1, 10))
+
+    if not ada_data:
+        await query.edit_message_text("❌ Tiada data kehadiran untuk minggu ini.")
+        return
+
+    doc.build(story)
+
+    await query.message.reply_document(
+        document=open(file_path, "rb"),
+        filename="Rekod_Kehadiran_Mingguan.pdf",
+        caption="📄 Rekod Kehadiran Mingguan"
+    )
+
+
+# ======================
+# MENU BUTTON HANDLER + MAIN
+# ======================
+# (BAHAGIAN BAWAH KEKAL SAMA MACAM KOD AWAK)
+
 
     # ---------- SEMAK RMT HARI INI ----------
     if data == "semak_rmt_today":
