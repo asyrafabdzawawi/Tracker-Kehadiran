@@ -20,7 +20,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 
 # ======================
-# [TAMBAHAN BARU] SENARAI KELAS HARI INI
+# [BARU] SENARAI KELAS HARI INI
 # ======================
 KELAS_HARI_INI = [
     "1 Amber", "1 Amethyst", "1 Aquamarine",
@@ -102,7 +102,7 @@ def already_recorded(kelas, tarikh):
     return False
 
 # ======================
-# [TAMBAHAN BARU] SEMAK KELAS BELUM ISI HARI INI
+# [BARU] SEMAK KELAS BELUM ISI HARI INI
 # ======================
 def semak_kelas_belum_isi_hari_ini():
     today = get_today_malaysia()
@@ -131,7 +131,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("📋 Rekod Kehadiran", callback_data="rekod")],
         [InlineKeyboardButton("🔍 Semak Kehadiran", callback_data="semak")],
         [InlineKeyboardButton("🍱 Semak RMT Hari Ini", callback_data="semak_rmt_today")],
-        # [TAMBAHAN BARU]
+        # [BARU]
         [InlineKeyboardButton("📊 Kelas Belum Isi Hari Ini", callback_data="kelas_belum_isi_today")]
     ]
 
@@ -172,7 +172,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     data = query.data
 
-    # ---------- [TAMBAHAN BARU] SEMAK KELAS BELUM ISI ----------
+    # ---------- [BARU] SEMAK KELAS BELUM ISI ----------
     if data == "kelas_belum_isi_today":
 
         kelas_dah, kelas_belum = semak_kelas_belum_isi_hari_ini()
@@ -199,5 +199,4 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ======================
     # SEMUA KOD ASAL AWAK KEKAL DI BAWAH INI
-    # (RMT, REKOD, SIMPAN, SEMAK, CALENDAR, PDF, DLL)
     # ======================
