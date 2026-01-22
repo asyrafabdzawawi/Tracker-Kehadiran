@@ -251,6 +251,92 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_state.pop(user_id, None)
         return
 
+    # ---------- SEMAK ----------
+    if data == "semak":
+        records = sheet_murid.get_all_records()
+        kelas_list = sorted(set(r["Kelas"] for r in records))
+
+        keyboard = [[InlineKeyboardButton(k, callback_data=f"semak_kelas|{k}")] for k in kelas_list]
+        keyboard.append([InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")])
+
+        await query.edit_message_text("Pilih kelas untuk semak:", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+
+    # ---------- PILIH KELAS SEMAK ----------
+    if data.startswith("semak_kelas|"):
+        kelas = data.split("|")[1]
+        user_state[user_id] = {"semak_kelas": kelas}
+
+        keyboard = [
+            [InlineKeyboardButton("📅 Hari Ini", callback_data="semak_tarikh|today")],
+            [InlineKeyboardButton("📆 Semalam", callback_data="semak_tarikh|yesterday")],
+            [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")],
+            [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")]
+        ]
+
+        # mesej baru di bawah (UX stabil)
+        await query.message.reply_text(
+            f"🏫 {kelas}\n\nPilih tarikh:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+
+    # ---------- SEMAK TARIKH ----------
+    if data.startswith("semak_tarikh|"):
+        choice = data.split("|")[1]
+        state = user_state.get(user_id)
+        kelas = state["semak_kelas"]
+
+        today = get_today_malaysia()
+
+        if choice == "calendar":
+            state["calendar_year"] = today.year
+            state["calendar_month"] = today.month
+            await show_calendar(query, user_id)
+            return
+
+        target_date = today.strftime("%d/%m/%Y") if choice == "today" else \
+            (today - datetime.timedelta(days=1)).strftime("%d/%m/%Y")
+
+        await show_record_for_date(query, kelas, target_date)
+        return
+
+
+    # ---------- NAVIGASI BULAN ----------
+    if data.startswith("cal_nav|"):
+        _, year, month = data.split("|")
+
+        state = user_state.get(user_id)
+        year = int(year)
+        month = int(month)
+
+        if month == 0:
+            month = 12
+            year -= 1
+        elif month == 13:
+            month = 1
+            year += 1
+
+        state["calendar_year"] = year
+        state["calendar_month"] = month
+
+        await show_calendar(query, user_id)
+        return
+
+
+    # ---------- PILIH HARI ----------
+    if data.startswith("cal_day|"):
+        _, year, month, day = data.split("|")
+
+        target_date = f"{int(day):02d}/{int(month):02d}/{year}"
+
+        state = user_state.get(user_id)
+        kelas = state["semak_kelas"]
+
+        await show_record_for_date(query, kelas, target_date)
+        return
 
 
 # ======================
