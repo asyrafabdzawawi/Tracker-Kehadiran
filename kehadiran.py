@@ -121,12 +121,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
 
-    # ---------- EXPORT PDF (TANGKAP AWAL - FIX UTAMA) ----------
-    if data == "export_pdf_weekly":
-        await export_pdf_weekly(query)
-        return
-
-
     # ---------- SEMAK RMT HARI INI ----------
     if data == "semak_rmt_today":
 
@@ -225,7 +219,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-    # ---------- SIMPAN / SEMUA HADIR (OVERWRITE MODEL) ----------
+    # ---------- SIMPAN / SEMUA HADIR ----------
     if data in ["simpan", "semua_hadir"]:
 
         state = user_state[user_id]
@@ -303,6 +297,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
+    # ---------- EXPORT PDF ----------
+    if data == "export_pdf_weekly":
+        await export_pdf_weekly(query)
+        return
+
+
     # ---------- PILIH KELAS SEMAK ----------
     if data.startswith("semak_kelas|"):
         kelas = data.split("|")[1]
@@ -319,6 +319,61 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🏫 {kelas}\n\nPilih tarikh:",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
+        return
+
+
+    # ---------- SEMAK TARIKH ----------
+    if data.startswith("semak_tarikh|"):
+        choice = data.split("|")[1]
+        state = user_state[user_id]
+        kelas = state["semak_kelas"]
+
+        today = get_today_malaysia()
+
+        if choice == "calendar":
+            state["calendar_year"] = today.year
+            state["calendar_month"] = today.month
+            await show_calendar(query, user_id)
+            return
+
+        target_date = today.strftime("%d/%m/%Y") if choice == "today" else \
+            (today - datetime.timedelta(days=1)).strftime("%d/%m/%Y")
+
+        await show_record_for_date(query, kelas, target_date)
+        return
+
+
+    # ---------- NAVIGASI BULAN ----------
+    if data.startswith("cal_nav|"):
+        _, year, month = data.split("|")
+
+        state = user_state[user_id]
+        year = int(year)
+        month = int(month)
+
+        if month == 0:
+            month = 12
+            year -= 1
+        elif month == 13:
+            month = 1
+            year += 1
+
+        state["calendar_year"] = year
+        state["calendar_month"] = month
+
+        await show_calendar(query, user_id)
+        return
+
+
+    # ---------- PILIH HARI ----------
+    if data.startswith("cal_day|"):
+        _, year, month, day = data.split("|")
+
+        target_date = f"{int(day):02d}/{int(month):02d}/{year}"
+        state = user_state[user_id]
+        kelas = state["semak_kelas"]
+
+        await show_record_for_date(query, kelas, target_date)
         return
 
 
@@ -352,6 +407,80 @@ async def show_student_buttons(query, user_id):
 
 
 # ======================
+# SHOW CALENDAR
+# ======================
+async def show_calendar(query, user_id):
+
+    state = user_state[user_id]
+    year = state["calendar_year"]
+    month = state["calendar_month"]
+
+    first_day = datetime.date(year, month, 1)
+    start_weekday = first_day.weekday()
+    days_in_month = (datetime.date(year + (month // 12), ((month % 12) + 1), 1) - datetime.timedelta(days=1)).day
+
+    keyboard = []
+
+    keyboard.append([
+        InlineKeyboardButton("⬅️", callback_data=f"cal_nav|{year}|{month-1 if month>1 else 12}"),
+        InlineKeyboardButton(f"{first_day.strftime('%B')} {year}", callback_data="noop"),
+        InlineKeyboardButton("➡️", callback_data=f"cal_nav|{year}|{month+1 if month<12 else 1}")
+    ])
+
+    weekdays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    keyboard.append([InlineKeyboardButton(d, callback_data="noop") for d in weekdays])
+
+    row = []
+    for _ in range(start_weekday):
+        row.append(InlineKeyboardButton(" ", callback_data="noop"))
+
+    for day in range(1, days_in_month + 1):
+        row.append(InlineKeyboardButton(str(day), callback_data=f"cal_day|{year}|{month}|{day}"))
+        if len(row) == 7:
+            keyboard.append(row)
+            row = []
+
+    if row:
+        while len(row) < 7:
+            row.append(InlineKeyboardButton(" ", callback_data="noop"))
+        keyboard.append(row)
+
+    await query.edit_message_text("🗓 Pilih tarikh:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+
+# ======================
+# SHOW RECORD FOR DATE
+# ======================
+async def show_record_for_date(query, kelas, target_date):
+
+    records = sheet_kehadiran.get_all_records()
+
+    for r in records:
+        if r["Kelas"] == kelas and r["Tarikh"] == target_date:
+            msg = format_attendance(
+                kelas,
+                r["Tarikh"],
+                r["Hari"],
+                r["Jumlah"],
+                r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
+            )
+            await query.edit_message_text(msg)
+            return
+
+    keyboard = [
+        [InlineKeyboardButton("📅 Hari Ini", callback_data="semak_tarikh|today")],
+        [InlineKeyboardButton("📆 Semalam", callback_data="semak_tarikh|yesterday")],
+        [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")],
+        [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")]
+    ]
+
+    await query.edit_message_text(
+        "❌ Tiada rekod untuk tarikh ini.\n\nPilih tarikh lain:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+# ======================
 # EXPORT PDF MINGGUAN
 # ======================
 async def export_pdf_weekly(query):
@@ -366,16 +495,13 @@ async def export_pdf_weekly(query):
     doc = SimpleDocTemplate(file_path)
     story = []
 
-    # ===== LOGO SEKOLAH =====
     logo_path = "logo_sklb.png"
-
     if os.path.exists(logo_path):
         img = Image(logo_path, width=80, height=80)
         img.hAlign = 'CENTER'
         story.append(img)
         story.append(Spacer(1, 12))
 
-    # ===== TAJUK =====
     story.append(Paragraph("Rekod Kehadiran Murid SK Labu Besar Minggu Ini", styles["Title"]))
     story.append(Spacer(1, 12))
 
