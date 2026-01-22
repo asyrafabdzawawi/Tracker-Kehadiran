@@ -121,6 +121,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
 
+    # ---------- EXPORT PDF (TANGKAP AWAL - FIX UTAMA) ----------
+    if data == "export_pdf_weekly":
+        await export_pdf_weekly(query)
+        return
+
+
     # ---------- SEMAK RMT HARI INI ----------
     if data == "semak_rmt_today":
 
@@ -169,6 +175,122 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
+    # ---------- REKOD ----------
+    if data == "rekod":
+        records = sheet_murid.get_all_records()
+        kelas_list = sorted(set(r["Kelas"] for r in records))
+        keyboard = [[InlineKeyboardButton(k, callback_data=f"kelas|{k}")] for k in kelas_list]
+        await query.edit_message_text("Pilih kelas:", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+
+    if data.startswith("kelas|"):
+        kelas = data.split("|")[1]
+        students = get_students_by_class(kelas)
+
+        today = get_today_malaysia()
+        tarikh = today.strftime("%d/%m/%Y")
+        hari = today.strftime("%A")
+
+        user_state[user_id] = {
+            "kelas": kelas,
+            "tarikh": tarikh,
+            "hari": hari,
+            "students": students,
+            "absent": []
+        }
+
+        await show_student_buttons(query, user_id)
+        return
+
+
+    # ---------- PILIH MURID ----------
+    if data.startswith("murid|"):
+        name = data.split("|")[1]
+        state = user_state[user_id]
+
+        if name in state["absent"]:
+            state["absent"].remove(name)
+        else:
+            state["absent"].append(name)
+
+        await show_student_buttons(query, user_id)
+        return
+
+
+    # ---------- RESET ----------
+    if data == "reset":
+        user_state[user_id]["absent"] = []
+        await show_student_buttons(query, user_id)
+        return
+
+
+    # ---------- SIMPAN / SEMUA HADIR (OVERWRITE MODEL) ----------
+    if data in ["simpan", "semua_hadir"]:
+
+        state = user_state[user_id]
+        kelas = state["kelas"]
+        tarikh = state["tarikh"]
+        hari = state["hari"]
+        total = len(state["students"])
+
+        absent = [] if data == "semua_hadir" else state["absent"]
+        hadir = total - len(absent)
+
+        row = find_existing_row(kelas, tarikh)
+
+        if row:
+            user_state[user_id]["pending_overwrite"] = {
+                "row": row,
+                "kelas": kelas,
+                "tarikh": tarikh,
+                "hari": hari,
+                "hadir": hadir,
+                "total": total,
+                "absent": absent
+            }
+
+            keyboard = [[
+                InlineKeyboardButton("✅ Ya, Overwrite", callback_data="confirm_overwrite"),
+                InlineKeyboardButton("❌ Batal", callback_data="cancel_overwrite")
+            ]]
+
+            await query.edit_message_text(
+                f"⚠️ Rekod kehadiran untuk\n\n🏫 {kelas}\n🗓 {tarikh}\n\nsudah wujud.\n\nAdakah anda mahu overwrite?",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            return
+
+        sheet_kehadiran.append_row([tarikh, hari, kelas, hadir, total, ", ".join(absent)])
+        msg = format_attendance(kelas, tarikh, hari, total, absent)
+        await query.edit_message_text("✅ Kehadiran berjaya disimpan!\n\n" + msg)
+        user_state.pop(user_id, None)
+        return
+
+
+    # ---------- CONFIRM OVERWRITE ----------
+    if data == "confirm_overwrite":
+
+        info = user_state[user_id]["pending_overwrite"]
+        sheet_kehadiran.delete_rows(info["row"])
+        sheet_kehadiran.append_row([
+            info["tarikh"], info["hari"], info["kelas"],
+            info["hadir"], info["total"], ", ".join(info["absent"])
+        ])
+
+        msg = format_attendance(info["kelas"], info["tarikh"], info["hari"], info["total"], info["absent"])
+        await query.edit_message_text("🔄 Rekod berjaya dioverwrite!\n\n" + msg)
+        user_state.pop(user_id, None)
+        return
+
+
+    # ---------- BATAL OVERWRITE ----------
+    if data == "cancel_overwrite":
+        await query.edit_message_text("❌ Overwrite dibatalkan. Rekod asal dikekalkan.")
+        user_state.pop(user_id, None)
+        return
+
+
     # ---------- SEMAK ----------
     if data == "semak":
         records = sheet_murid.get_all_records()
@@ -193,7 +315,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")]
         ]
 
-        # mesej baru di bawah
         await query.message.reply_text(
             f"🏫 {kelas}\n\nPilih tarikh:",
             reply_markup=InlineKeyboardMarkup(keyboard)
@@ -201,140 +322,37 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-    # ---------- SEMAK TARIKH ----------
-    if data.startswith("semak_tarikh|"):
-        choice = data.split("|")[1]
-        state = user_state.get(user_id)
-        kelas = state["semak_kelas"]
-
-        today = get_today_malaysia()
-
-        if choice == "calendar":
-            state["calendar_year"] = today.year
-            state["calendar_month"] = today.month
-            await show_calendar(query, user_id)
-            return
-
-        target_date = today.strftime("%d/%m/%Y") if choice == "today" else \
-            (today - datetime.timedelta(days=1)).strftime("%d/%m/%Y")
-
-        await show_record_for_date(query, kelas, target_date)
-        return
-
-
-    # ---------- NAVIGASI BULAN ----------
-    if data.startswith("cal_nav|"):
-        _, year, month = data.split("|")
-
-        state = user_state[user_id]
-        year = int(year)
-        month = int(month)
-
-        if month == 0:
-            month = 12
-            year -= 1
-        elif month == 13:
-            month = 1
-            year += 1
-
-        state["calendar_year"] = year
-        state["calendar_month"] = month
-
-        await show_calendar(query, user_id)
-        return
-
-
-    # ---------- PILIH HARI ----------
-    if data.startswith("cal_day|"):
-        _, year, month, day = data.split("|")
-
-        target_date = f"{int(day):02d}/{int(month):02d}/{year}"
-        state = user_state[user_id]
-        kelas = state["semak_kelas"]
-
-        await show_record_for_date(query, kelas, target_date)
-        return
-
-
 # ======================
-# SHOW CALENDAR  (FIX UTAMA)
+# SHOW STUDENT BUTTONS
 # ======================
-async def show_calendar(query, user_id):
+async def show_student_buttons(query, user_id):
 
     state = user_state[user_id]
-    year = state["calendar_year"]
-    month = state["calendar_month"]
 
-    first_day = datetime.date(year, month, 1)
-    start_weekday = first_day.weekday()
-    days_in_month = (datetime.date(year + (month // 12), ((month % 12) + 1), 1) - datetime.timedelta(days=1)).day
-
-    keyboard = []
-
-    keyboard.append([
-        InlineKeyboardButton("⬅️", callback_data=f"cal_nav|{year}|{month-1 if month>1 else 12}"),
-        InlineKeyboardButton(f"{first_day.strftime('%B')} {year}", callback_data="noop"),
-        InlineKeyboardButton("➡️", callback_data=f"cal_nav|{year}|{month+1 if month<12 else 1}")
-    ])
-
-    weekdays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
-    keyboard.append([InlineKeyboardButton(d, callback_data="noop") for d in weekdays])
-
-    row = []
-    for _ in range(start_weekday):
-        row.append(InlineKeyboardButton(" ", callback_data="noop"))
-
-    for day in range(1, days_in_month + 1):
-        row.append(InlineKeyboardButton(str(day), callback_data=f"cal_day|{year}|{month}|{day}"))
-        if len(row) == 7:
-            keyboard.append(row)
-            row = []
-
-    if row:
-        while len(row) < 7:
-            row.append(InlineKeyboardButton(" ", callback_data="noop"))
-        keyboard.append(row)
-
-    # 🔴 EDIT MESEJ BARU (BUKAN edit_message_text)
-    await query.message.edit_text("🗓 Pilih tarikh:", reply_markup=InlineKeyboardMarkup(keyboard))
-
-
-# ======================
-# SHOW RECORD FOR DATE  (FIX UTAMA)
-# ======================
-async def show_record_for_date(query, kelas, target_date):
-
-    records = sheet_kehadiran.get_all_records()
-
-    for r in records:
-        if r["Kelas"] == kelas and r["Tarikh"] == target_date:
-            msg = format_attendance(
-                kelas,
-                r["Tarikh"],
-                r["Hari"],
-                r["Jumlah"],
-                r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
-            )
-
-            # 🔴 EDIT MESEJ YANG SAMA
-            await query.message.edit_text(msg)
-            return
-
-    keyboard = [
-        [InlineKeyboardButton("📅 Hari Ini", callback_data="semak_tarikh|today")],
-        [InlineKeyboardButton("📆 Semalam", callback_data="semak_tarikh|yesterday")],
-        [InlineKeyboardButton("🗓 Pilih Tarikh", callback_data="semak_tarikh|calendar")],
-        [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")]
-    ]
-
-    await query.message.edit_text(
-        "❌ Tiada rekod untuk tarikh ini.\n\nPilih tarikh lain:",
-        reply_markup=InlineKeyboardMarkup(keyboard)
+    msg = format_attendance(
+        state["kelas"],
+        state["tarikh"],
+        state["hari"],
+        len(state["students"]),
+        state["absent"]
     )
 
+    keyboard = []
+    for n in state["students"]:
+        label = f"🔴 {n}" if n in state["absent"] else f"🟢 {n}"
+        keyboard.append([InlineKeyboardButton(label, callback_data=f"murid|{n}")])
+
+    keyboard.append([
+        InlineKeyboardButton("💾 Simpan", callback_data="simpan"),
+        InlineKeyboardButton("♻️ Reset", callback_data="reset"),
+        InlineKeyboardButton("✅ Semua Hadir", callback_data="semua_hadir")
+    ])
+
+    await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard))
+
 
 # ======================
-# EXPORT PDF MINGGUAN (LOGO OK)
+# EXPORT PDF MINGGUAN
 # ======================
 async def export_pdf_weekly(query):
 
@@ -348,7 +366,8 @@ async def export_pdf_weekly(query):
     doc = SimpleDocTemplate(file_path)
     story = []
 
-    logo_path = "sklb.png"   # 🔴 PASTIKAN FAIL INI DALAM REPO
+    # ===== LOGO SEKOLAH =====
+    logo_path = "logo_sklb.png"
 
     if os.path.exists(logo_path):
         img = Image(logo_path, width=80, height=80)
@@ -356,6 +375,7 @@ async def export_pdf_weekly(query):
         story.append(img)
         story.append(Spacer(1, 12))
 
+    # ===== TAJUK =====
     story.append(Paragraph("Rekod Kehadiran Murid SK Labu Besar Minggu Ini", styles["Title"]))
     story.append(Spacer(1, 12))
 
@@ -392,7 +412,7 @@ async def export_pdf_weekly(query):
             story.append(Spacer(1, 10))
 
     if not ada_data:
-        await query.message.edit_text("❌ Tiada data kehadiran untuk minggu ini.")
+        await query.edit_message_text("❌ Tiada data kehadiran untuk minggu ini.")
         return
 
     doc.build(story)
