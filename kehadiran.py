@@ -1,14 +1,17 @@
 # ======================
+# BOT KEHADIRAN FINAL VERSION (STABIL & PRODUCTION READY)
+# ======================
+
+# ======================
 # IMPORT
 # ======================
-import os, json, datetime, pytz
+import os, json, datetime, pytz, random
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import random
 
 
 # ======================
@@ -72,6 +75,7 @@ ALL_CLASSES = [
 # ======================
 # UTILS
 # ======================
+
 def get_today_malaysia():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.datetime.now(tz).date()
@@ -147,8 +151,8 @@ async def check_all_classes_completed(context):
 
         try:
             await context.bot.send_message(chat_id=GROUP_ID, text=msg)
-        except Exception as e:
-            print("❌ Gagal hantar mesej ke group:", e)
+        except Exception:
+            pass
 
 
 # ======================
@@ -198,14 +202,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     data = query.data
 
-
     # ---------- SEMAK RMT HARI INI ----------
     if data == "semak_rmt_today":
         today = get_today_malaysia()
         tarikh = today.strftime("%d/%m/%Y")
         await query.edit_message_text(f"🎉 Semua murid RMT hadir hari ini.\n\n📅 {tarikh}")
         return
-
 
     # ---------- REKOD ----------
     if data == "rekod":
@@ -214,7 +216,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton(k, callback_data=f"kelas|{k}")] for k in kelas_list]
         await query.edit_message_text("Pilih kelas:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
-
 
     if data.startswith("kelas|"):
         kelas = data.split("|")[1]
@@ -235,7 +236,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_student_buttons(query, user_id)
         return
 
-
     # ---------- PILIH MURID ----------
     if data.startswith("murid|"):
         name = data.split("|")[1]
@@ -249,13 +249,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_student_buttons(query, user_id)
         return
 
-
     # ---------- RESET ----------
     if data == "reset":
         user_state[user_id]["absent"] = []
         await show_student_buttons(query, user_id)
         return
-
 
     # ---------- SIMPAN / SEMUA HADIR ----------
     if data in ["simpan", "semua_hadir"]:
@@ -297,12 +295,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = format_attendance(kelas, tarikh, hari, total, absent)
         await query.edit_message_text("✅ Kehadiran berjaya disimpan!\n\n" + msg)
 
-        # 🔔 SEMAK JIKA SEMUA KELAS SUDAH SIAP
         await check_all_classes_completed(context)
 
         user_state.pop(user_id, None)
         return
-
 
     # ---------- CONFIRM OVERWRITE ----------
     if data == "confirm_overwrite":
@@ -317,19 +313,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = format_attendance(info["kelas"], info["tarikh"], info["hari"], info["total"], info["absent"])
         await query.edit_message_text("🔄 Rekod berjaya dioverwrite!\n\n" + msg)
 
-        # 🔔 SEMAK JIKA SEMUA KELAS SUDAH SIAP
         await check_all_classes_completed(context)
 
         user_state.pop(user_id, None)
         return
-
 
     # ---------- BATAL OVERWRITE ----------
     if data == "cancel_overwrite":
         await query.edit_message_text("❌ Overwrite dibatalkan. Rekod asal dikekalkan.")
         user_state.pop(user_id, None)
         return
-
 
     # ---------- SEMAK ----------
     if data == "semak":
@@ -342,12 +335,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Pilih kelas untuk semak:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-
     # ---------- EXPORT PDF ----------
     if data == "export_pdf_weekly":
         await export_pdf_weekly(query)
         return
-
 
     # ---------- PILIH KELAS SEMAK ----------
     if data.startswith("semak_kelas|"):
@@ -366,7 +357,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return
-
 
     # ---------- SEMAK TARIKH ----------
     if data.startswith("semak_tarikh|"):
@@ -388,7 +378,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_record_for_date(query, kelas, target_date)
         return
 
-
     # ---------- NAVIGASI BULAN ----------
     if data.startswith("cal_nav|"):
         _, year, month = data.split("|")
@@ -409,7 +398,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await show_calendar(query, user_id)
         return
-
 
     # ---------- PILIH HARI ----------
     if data.startswith("cal_day|"):
@@ -513,8 +501,7 @@ async def show_record_for_date(query, kelas, target_date):
             try:
                 await query.edit_message_text(msg)
             except Exception:
-                    pass
-
+                pass
             return
 
     keyboard = [
@@ -524,17 +511,17 @@ async def show_record_for_date(query, kelas, target_date):
         [InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")]
     ]
 
-    await query.edit_message_text(
-        "❌ Tiada rekod untuk tarikh ini.\n\nPilih tarikh lain:",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    try:
+        await query.edit_message_text(
+            "❌ Tiada rekod untuk tarikh ini.\n\nPilih tarikh lain:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except Exception:
+        pass
 
 
 # ======================
-# EXPORT PDF MINGGUAN
-# ======================
-# ======================
-# EXPORT PDF MINGGUAN (FORMAT DIPERBAIKI SAHAJA)
+# EXPORT PDF MINGGUAN (FINAL STABIL)
 # ======================
 async def export_pdf_weekly(query):
 
@@ -553,8 +540,8 @@ async def export_pdf_weekly(query):
         logo = Image("logo_sklb.png", width=80, height=80)
         story.append(logo)
         story.append(Spacer(1, 10))
-    except:
-        pass   # kalau logo tiada, PDF tetap jalan tanpa crash
+    except Exception:
+        pass
 
     # ===== TAJUK =====
     story.append(Paragraph("Rekod Kehadiran Murid SK Labu Besar", styles["Title"]))
@@ -574,7 +561,6 @@ async def export_pdf_weekly(query):
 
         ada_data = True
 
-        # ===== HEADER HARI =====
         story.append(Paragraph(f"{hari}  |  {tarikh}", styles["Heading2"]))
         story.append(Spacer(1, 8))
 
@@ -582,15 +568,11 @@ async def export_pdf_weekly(query):
             absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
             hadir = int(r["Jumlah"]) - len(absent)
 
-            # ===== NAMA KELAS =====
             story.append(Paragraph(f"<b>Kelas : {r['Kelas']}</b>", styles["Heading3"]))
-
-            # ===== PAPAR HARI & TARIKH BAWAH KELAS (MACAM VERSI LAMA) =====
             story.append(Paragraph(f"Hari : {hari}", styles["Normal"]))
             story.append(Paragraph(f"Tarikh : {tarikh}", styles["Normal"]))
             story.append(Spacer(1, 4))
 
-            # ===== KEHADIRAN =====
             story.append(Paragraph(f"Kehadiran : {hadir} / {r['Jumlah']}", styles["Normal"]))
 
             if absent:
@@ -604,13 +586,10 @@ async def export_pdf_weekly(query):
 
     if not ada_data:
         try:
-            await query.edit_message_text(
-                "❌ Tiada rekod untuk tarikh ini.\n\nPilih tarikh lain:",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
+            await query.edit_message_text("❌ Tiada data kehadiran untuk minggu ini.")
         except Exception:
             pass
-    return
+        return
 
     doc.build(story)
 
@@ -619,7 +598,6 @@ async def export_pdf_weekly(query):
         filename="Rekod_Kehadiran_Mingguan.pdf",
         caption="📄 Rekod Kehadiran Mingguan"
     )
-
 
 
 # ======================
@@ -634,6 +612,7 @@ async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # ======================
 # MAIN
 # ======================
+
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -641,7 +620,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_button))
 
     print("🤖 Bot Kehadiran sedang berjalan...")
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
