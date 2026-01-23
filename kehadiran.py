@@ -60,7 +60,7 @@ ALL_CLASSES = [
     "PRACITRINE", "PRACRYSTAL"
 ]
 
-GROUP_ID = os.environ.get("-1002070657863")   # ID group rasmi sekolah
+GROUP_ID = os.environ.get("1002070657863")   # ID group rasmi sekolah
 
 
 # ======================
