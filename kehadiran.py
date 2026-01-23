@@ -50,9 +50,56 @@ SWEET_QUOTES = [
 def get_random_quote():
     return random.choice(SWEET_QUOTES)
 
+ALL_CLASSES = [
+    "1 Amber", "1 Amethyst", "1 Aquamarine",
+    "2 Amber", "2 Amethyst", "2 Aquamarine",
+    "3 Amber", "3 Amethyst", "3 Aquamarine",
+    "4 Amber", "4 Amethyst", "4 Aquamarine",
+    "5 Amber", "5 Amethyst", "5 Aquamarine",
+    "6 Amber", "6 Amethyst", "6 Aquamarine",
+    "PRACITRINE", "PRACRYSTAL"
+]
+
+GROUP_ID = os.environ.get("-1002070657863")   # ID group rasmi sekolah
+
+
 # ======================
 # UTILS
 # ======================
+async def check_all_classes_completed(context):
+
+    today = get_today_malaysia()
+    tarikh = today.strftime("%d/%m/%Y")
+
+    records = sheet_kehadiran.get_all_records()
+
+    # Ambil semua kelas yang dah rekod hari ini
+    recorded_classes = set()
+    for r in records:
+        if r["Tarikh"] == tarikh:
+            recorded_classes.add(r["Kelas"])
+
+    # Semak kelas yang belum siap
+    belum = [k for k in ALL_CLASSES if k not in recorded_classes]
+
+    # Kalau semua dah siap
+    if not belum:
+
+        msg = (
+            "✅ *Kehadiran Lengkap Hari Ini*\n\n"
+            f"📅 Tarikh: {tarikh}\n\n"
+            "Semua kelas telah berjaya merekod kehadiran.\n"
+            "Terima kasih atas kerjasama semua guru. 🙏\n\n"
+            "📊 Sistem Tracker Kehadiran"
+        )
+
+        await context.bot.send_message(
+            chat_id=GROUP_ID,
+            text=msg,
+            parse_mode="Markdown"
+        )
+
+
 def get_today_malaysia():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.datetime.now(tz).date()
@@ -285,6 +332,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sheet_kehadiran.append_row([tarikh, hari, kelas, hadir, total, ", ".join(absent)])
         msg = format_attendance(kelas, tarikh, hari, total, absent)
         await query.edit_message_text("✅ Kehadiran berjaya disimpan!\n\n" + msg)
+        await check_all_classes_completed(context)
         user_state.pop(user_id, None)
         return
 
@@ -301,6 +349,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         msg = format_attendance(info["kelas"], info["tarikh"], info["hari"], info["total"], info["absent"])
         await query.edit_message_text("🔄 Rekod berjaya dioverwrite!\n\n" + msg)
+        await check_all_classes_completed(context)
         user_state.pop(user_id, None)
         return
 
