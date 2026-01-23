@@ -65,7 +65,7 @@ ALL_CLASSES = [
     "4 Amber", "4 Amethyst", "4 Aquamarine",
     "5 Amber", "5 Amethyst", "5 Aquamarine",
     "6 Amber", "6 Amethyst", "6 Aquamarine",
-    "PRACITRINE", "PRACRYSTAL"
+    "PRA CITRINE", "PRA CRYSTAL"
 ]
 
 
