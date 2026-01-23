@@ -86,7 +86,7 @@ async def check_all_classes_completed(context):
     if not belum:
 
         msg = (
-            "TESTING SEDANG DIJALANKAN*\n\n"
+            "TESTING SEDANG DIJALANKAN, MESEJ INI DIJANA SECARA AUTOMATIK*\n\n"
             "✅ *Kehadiran Lengkap Hari Ini*\n\n"
             f"📅 Tarikh: {tarikh}\n\n"
             "Semua kelas telah berjaya merekod kehadiran.\n"
