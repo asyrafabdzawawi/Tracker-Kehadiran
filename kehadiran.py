@@ -8,6 +8,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKe
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import random
 
 
 # ======================
@@ -37,18 +38,10 @@ sheet_kehadiran = client.open_by_key(SHEET_ID).worksheet("Kehadiran")
 # ======================
 user_state = {}
 
-import random
-
-SWEET_QUOTES = [
-    "🌤️ Semoga urusan hari ini dipermudahkan. Terima kasih atas dedikasi cikgu.",
-    "Kurangkan manis dalam minuman🥤, lebihkan manis dalam senyuman😊",
-    "💓 Orang kata jodoh buat jantung berdebar, tapi guru belum isi kehadiran pun boleh buat berdebar.",
-    "🤍 Jangan takut gagal, kerana setiap kegagalan adalah batu loncatan menuju kejayaan.",
-    "🎓 Terima kasih kerana terus komited demi anak-anak didik kita.",
-]
-
-def get_random_quote():
-    return random.choice(SWEET_QUOTES)
+# ======================
+# GROUP NOTIFICATION CONFIG
+# ======================
+GROUP_ID = int(os.environ.get("GROUP_ID"))
 
 ALL_CLASSES = [
     "1 Amber", "1 Amethyst", "1 Aquamarine",
@@ -60,15 +53,25 @@ ALL_CLASSES = [
     "PRACITRINE", "PRACRYSTAL"
 ]
 
-GROUP_ID = int(os.environ.get("GROUP_ID"))   # ID group rasmi sekolah
+
+# ======================
+# SWEET QUOTES
+# ======================
+SWEET_QUOTES = [
+    "🌤️ Semoga urusan hari ini dipermudahkan. Terima kasih atas dedikasi cikgu.",
+    "Kurangkan manis dalam minuman🥤, lebihkan manis dalam senyuman😊",
+    "💓 Orang kata jodoh buat jantung berdebar, tapi guru belum isi kehadiran pun boleh buat berdebar.",
+    "🤍 Jangan takut gagal, kerana setiap kegagalan adalah batu loncatan menuju kejayaan.",
+    "🎓 Terima kasih kerana terus komited demi anak-anak didik kita.",
+]
+
+def get_random_quote():
+    return random.choice(SWEET_QUOTES)
 
 
 # ======================
 # UTILS
 # ======================
-
-
-
 def get_today_malaysia():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.datetime.now(tz).date()
@@ -114,6 +117,10 @@ def find_existing_row(kelas, tarikh):
             return idx
     return None
 
+
+# ======================
+# CHECK ALL CLASSES COMPLETED (GROUP NOTIFICATION)
+# ======================
 async def check_all_classes_completed(context):
 
     today = get_today_malaysia()
@@ -121,32 +128,31 @@ async def check_all_classes_completed(context):
 
     records = sheet_kehadiran.get_all_records()
 
-    # Ambil semua kelas yang dah rekod hari ini
     recorded_classes = set()
     for r in records:
         if r["Tarikh"] == tarikh:
-            recorded_classes.add(r["Kelas"])
+            recorded_classes.add(r["Kelas"].strip().lower())
 
-    # Senarai kelas yang belum isi
-    belum = [k for k in ALL_CLASSES if k not in recorded_classes]
+    belum = [k for k in ALL_CLASSES if k.strip().lower() not in recorded_classes]
 
-    # Kalau semua kelas sudah siap
     if not belum:
 
         msg = (
-            "TESTING SEDANG DIJALANKAN. MESEJ INI DIJANA AUTOMATIK*\n\n"
-            "✅ *Kehadiran Lengkap Hari Ini*\n\n"
+            "✅ Kehadiran Lengkap Hari Ini\n\n"
             f"📅 Tarikh: {tarikh}\n\n"
             "Semua kelas telah berjaya merekod kehadiran.\n"
             "Terima kasih atas kerjasama semua guru. 🙏\n\n"
             "📊 Sistem Tracker Kehadiran SK Labu Besar"
         )
 
-        await context.bot.send_message(
-            chat_id=GROUP_ID,
-            text=msg,
-            parse_mode="Markdown"
-        )
+        try:
+            await context.bot.send_message(
+                chat_id=GROUP_ID,
+                text=msg
+            )
+        except Exception as e:
+            print("❌ Gagal hantar mesej ke group:", e)
+
 
 # ======================
 # START / MENU UTAMA
@@ -161,7 +167,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_keyboard = ReplyKeyboardMarkup([[KeyboardButton("🏠 Menu Utama")]], resize_keyboard=True)
 
-    quote = get_random_quote()   # ← betulkan typo (uote → quote)
+    quote = get_random_quote()
 
     text = (
         "🏫 Tracker Kehadiran Murid SK Labu Besar\n\n"
@@ -185,7 +191,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-
 # ======================
 # BUTTON HANDLER
 # ======================
@@ -195,7 +200,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     user_id = query.from_user.id
     data = query.data
-
 
     # ---------- SEMAK RMT HARI INI ----------
     if data == "semak_rmt_today":
@@ -244,7 +248,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(msg)
         return
 
-
     # ---------- REKOD ----------
     if data == "rekod":
         records = sheet_murid.get_all_records()
@@ -252,7 +255,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton(k, callback_data=f"kelas|{k}")] for k in kelas_list]
         await query.edit_message_text("Pilih kelas:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
-
 
     if data.startswith("kelas|"):
         kelas = data.split("|")[1]
@@ -273,7 +275,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_student_buttons(query, user_id)
         return
 
-
     # ---------- PILIH MURID ----------
     if data.startswith("murid|"):
         name = data.split("|")[1]
@@ -287,13 +288,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_student_buttons(query, user_id)
         return
 
-
     # ---------- RESET ----------
     if data == "reset":
         user_state[user_id]["absent"] = []
         await show_student_buttons(query, user_id)
         return
-
 
     # ---------- SIMPAN / SEMUA HADIR ----------
     if data in ["simpan", "semua_hadir"]:
@@ -334,10 +333,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         sheet_kehadiran.append_row([tarikh, hari, kelas, hadir, total, ", ".join(absent)])
         msg = format_attendance(kelas, tarikh, hari, total, absent)
         await query.edit_message_text("✅ Kehadiran berjaya disimpan!\n\n" + msg)
+
+        # 🔔 SEMAK JIKA SEMUA KELAS SUDAH SIAP
         await check_all_classes_completed(context)
+
         user_state.pop(user_id, None)
         return
-
 
     # ---------- CONFIRM OVERWRITE ----------
     if data == "confirm_overwrite":
@@ -351,17 +352,18 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         msg = format_attendance(info["kelas"], info["tarikh"], info["hari"], info["total"], info["absent"])
         await query.edit_message_text("🔄 Rekod berjaya dioverwrite!\n\n" + msg)
+
+        # 🔔 SEMAK JIKA SEMUA KELAS SUDAH SIAP
         await check_all_classes_completed(context)
+
         user_state.pop(user_id, None)
         return
-
 
     # ---------- BATAL OVERWRITE ----------
     if data == "cancel_overwrite":
         await query.edit_message_text("❌ Overwrite dibatalkan. Rekod asal dikekalkan.")
         user_state.pop(user_id, None)
         return
-
 
     # ---------- SEMAK ----------
     if data == "semak":
@@ -374,12 +376,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Pilih kelas untuk semak:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-
     # ---------- EXPORT PDF ----------
     if data == "export_pdf_weekly":
         await export_pdf_weekly(query)
         return
-
 
     # ---------- PILIH KELAS SEMAK ----------
     if data.startswith("semak_kelas|"):
@@ -399,7 +399,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-
     # ---------- SEMAK TARIKH ----------
     if data.startswith("semak_tarikh|"):
         choice = data.split("|")[1]
@@ -416,40 +415,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         target_date = today.strftime("%d/%m/%Y") if choice == "today" else \
             (today - datetime.timedelta(days=1)).strftime("%d/%m/%Y")
-
-        await show_record_for_date(query, kelas, target_date)
-        return
-
-
-    # ---------- NAVIGASI BULAN ----------
-    if data.startswith("cal_nav|"):
-        _, year, month = data.split("|")
-
-        state = user_state[user_id]
-        year = int(year)
-        month = int(month)
-
-        if month == 0:
-            month = 12
-            year -= 1
-        elif month == 13:
-            month = 1
-            year += 1
-
-        state["calendar_year"] = year
-        state["calendar_month"] = month
-
-        await show_calendar(query, user_id)
-        return
-
-
-    # ---------- PILIH HARI ----------
-    if data.startswith("cal_day|"):
-        _, year, month, day = data.split("|")
-
-        target_date = f"{int(day):02d}/{int(month):02d}/{year}"
-        state = user_state[user_id]
-        kelas = state["semak_kelas"]
 
         await show_record_for_date(query, kelas, target_date)
         return
@@ -646,18 +611,8 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_button))
 
-    # 🧪 TEST HANTAR MESEJ KE GROUP (SEKALI SAHAJA)
-    async def test_group(context):
-        await context.bot.send_message(
-            chat_id=GROUP_ID,
-            text="🧪 Test mesej dari Bot Tracker Kehadiran"
-        )
-
-    app.job_queue.run_once(test_group, 5)
-
     print("🤖 Bot Kehadiran sedang berjalan...")
     app.run_polling()
-
 
 
 if __name__ == "__main__":
