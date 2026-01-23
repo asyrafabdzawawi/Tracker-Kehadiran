@@ -112,19 +112,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_keyboard = ReplyKeyboardMarkup([[KeyboardButton("🏠 Menu Utama")]], resize_keyboard=True)
 
-    uote = get_random_quote()
+    quote = get_random_quote()   # ← betulkan typo (uote → quote)
 
-text = (
-    "🏫 Tracker Kehadiran Murid SK Labu Besar\n\n"
-    f"💬 {quote}\n\n"
-    "Pilih menu:")
+    text = (
+        "🏫 Tracker Kehadiran Murid SK Labu Besar\n\n"
+        f"💬 {quote}\n\n"
+        "Pilih menu:"
+    )
 
     if update.message:
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard))
-        await update.message.reply_text("🏠 Tekan butang di bawah untuk kembali ke Menu Utama", reply_markup=reply_keyboard)
+        await update.message.reply_text(
+            "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
+            reply_markup=reply_keyboard
+        )
     else:
-        await update.callback_query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard))
-        await update.callback_query.message.reply_text("🏠 Tekan butang di bawah untuk kembali ke Menu Utama", reply_markup=reply_keyboard)
+        await update.callback_query.edit_message_text(
+            text, reply_markup=InlineKeyboardMarkup(inline_keyboard)
+        )
+        await update.callback_query.message.reply_text(
+            "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
+            reply_markup=reply_keyboard
+        )
+
 
 
 # ======================
