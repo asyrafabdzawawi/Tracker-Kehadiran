@@ -646,16 +646,18 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_button))
 
+    # 🧪 TEST HANTAR MESEJ KE GROUP (SEKALI SAHAJA)
     async def test_group(context):
-    await context.bot.send_message(
-        chat_id=GROUP_ID,
-        text="🧪 Test mesej dari Bot Tracker Kehadiran"
-    )
+        await context.bot.send_message(
+            chat_id=GROUP_ID,
+            text="🧪 Test mesej dari Bot Tracker Kehadiran"
+        )
 
     app.job_queue.run_once(test_group, 5)
 
     print("🤖 Bot Kehadiran sedang berjalan...")
     app.run_polling()
+
 
 
 if __name__ == "__main__":
