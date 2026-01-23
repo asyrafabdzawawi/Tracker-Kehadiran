@@ -37,6 +37,18 @@ sheet_kehadiran = client.open_by_key(SHEET_ID).worksheet("Kehadiran")
 # ======================
 user_state = {}
 
+import random
+
+SWEET_QUOTES = [
+    "🌤️ Semoga urusan hari ini dipermudahkan. Terima kasih atas dedikasi cikgu.",
+    "Kurangkan manis dalam minuman🥤, lebihkan manis dalam senyuman😊",
+    "💓 Orang kata jodoh buat jantung berdebar, tapi guru belum isi kehadiran pun boleh buat berdebar.",
+    "🤍 Jangan takut gagal, kerana setiap kegagalan adalah batu loncatan menuju kejayaan.",
+    "🎓 Terima kasih kerana terus komited demi anak-anak didik kita.",
+]
+
+def get_random_quote():
+    return random.choice(SWEET_QUOTES)
 
 # ======================
 # UTILS
@@ -100,7 +112,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_keyboard = ReplyKeyboardMarkup([[KeyboardButton("🏠 Menu Utama")]], resize_keyboard=True)
 
-    text = "Tracker Kehadiran Murid SK Labu Besar\n\nPilih menu:"
+    uote = get_random_quote()
+
+text = (
+    "🏫 Tracker Kehadiran Murid SK Labu Besar\n\n"
+    f"💬 {quote}\n\n"
+    "Pilih menu:")
 
     if update.message:
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard))
