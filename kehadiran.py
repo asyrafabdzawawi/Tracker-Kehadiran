@@ -86,11 +86,12 @@ async def check_all_classes_completed(context):
     if not belum:
 
         msg = (
+            "TESTING SEDANG DIJALANKAN*\n\n"
             "✅ *Kehadiran Lengkap Hari Ini*\n\n"
             f"📅 Tarikh: {tarikh}\n\n"
             "Semua kelas telah berjaya merekod kehadiran.\n"
             "Terima kasih atas kerjasama semua guru. 🙏\n\n"
-            "📊 Sistem Tracker Kehadiran"
+            "📊 Sistem Tracker Kehadiran SK Labu Besar"
         )
 
         await context.bot.send_message(
