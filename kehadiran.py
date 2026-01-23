@@ -510,7 +510,11 @@ async def show_record_for_date(query, kelas, target_date):
                 r["Jumlah"],
                 r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
             )
-            await query.edit_message_text(msg)
+            try:
+                await query.edit_message_text(msg)
+            except Exception:
+                    pass
+
             return
 
     keyboard = [
@@ -599,8 +603,14 @@ async def export_pdf_weekly(query):
             story.append(Spacer(1, 12))
 
     if not ada_data:
-        await query.edit_message_text("❌ Tiada data kehadiran untuk minggu ini.")
-        return
+        try:
+            await query.edit_message_text(
+                "❌ Tiada rekod untuk tarikh ini.\n\nPilih tarikh lain:",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        except Exception:
+            pass
+    return
 
     doc.build(story)
 
