@@ -529,6 +529,9 @@ async def show_record_for_date(query, kelas, target_date):
 # ======================
 # EXPORT PDF MINGGUAN
 # ======================
+# ======================
+# EXPORT PDF MINGGUAN (FORMAT DIPERBAIKI SAHAJA)
+# ======================
 async def export_pdf_weekly(query):
 
     today = get_today_malaysia()
@@ -541,7 +544,17 @@ async def export_pdf_weekly(query):
     doc = SimpleDocTemplate(file_path)
     story = []
 
-    story.append(Paragraph("Rekod Kehadiran Murid SK Labu Besar Minggu Ini", styles["Title"]))
+    # ===== LOGO SEKOLAH =====
+    try:
+        logo = Image("logo_sklb.png", width=80, height=80)
+        story.append(logo)
+        story.append(Spacer(1, 10))
+    except:
+        pass   # kalau logo tiada, PDF tetap jalan tanpa crash
+
+    # ===== TAJUK =====
+    story.append(Paragraph("Rekod Kehadiran Murid SK Labu Besar", styles["Title"]))
+    story.append(Paragraph("Laporan Mingguan", styles["Heading2"]))
     story.append(Spacer(1, 12))
 
     ada_data = False
@@ -556,23 +569,34 @@ async def export_pdf_weekly(query):
             continue
 
         ada_data = True
-        story.append(Paragraph(f"{hari} : {tarikh}", styles["Heading2"]))
+
+        # ===== HEADER HARI =====
+        story.append(Paragraph(f"{hari}  |  {tarikh}", styles["Heading2"]))
         story.append(Spacer(1, 8))
 
         for r in sorted(daily, key=lambda x: x["Kelas"]):
             absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
             hadir = int(r["Jumlah"]) - len(absent)
 
-            story.append(Paragraph(f"Kelas : {r['Kelas']}", styles["Heading3"]))
+            # ===== NAMA KELAS =====
+            story.append(Paragraph(f"<b>Kelas : {r['Kelas']}</b>", styles["Heading3"]))
+
+            # ===== PAPAR HARI & TARIKH BAWAH KELAS (MACAM VERSI LAMA) =====
+            story.append(Paragraph(f"Hari : {hari}", styles["Normal"]))
+            story.append(Paragraph(f"Tarikh : {tarikh}", styles["Normal"]))
+            story.append(Spacer(1, 4))
+
+            # ===== KEHADIRAN =====
             story.append(Paragraph(f"Kehadiran : {hadir} / {r['Jumlah']}", styles["Normal"]))
 
             if absent:
+                story.append(Paragraph("Tidak Hadir:", styles["Normal"]))
                 for idx, name in enumerate(absent, 1):
                     story.append(Paragraph(f"{idx}. {name}", styles["Normal"]))
             else:
                 story.append(Paragraph("Semua murid hadir", styles["Normal"]))
 
-            story.append(Spacer(1, 10))
+            story.append(Spacer(1, 12))
 
     if not ada_data:
         await query.edit_message_text("❌ Tiada data kehadiran untuk minggu ini.")
@@ -585,6 +609,7 @@ async def export_pdf_weekly(query):
         filename="Rekod_Kehadiran_Mingguan.pdf",
         caption="📄 Rekod Kehadiran Mingguan"
     )
+
 
 
 # ======================
