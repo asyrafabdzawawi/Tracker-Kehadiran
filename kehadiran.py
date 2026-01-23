@@ -60,45 +60,13 @@ ALL_CLASSES = [
     "PRACITRINE", "PRACRYSTAL"
 ]
 
-GROUP_ID = os.environ.get("1002070657863")   # ID group rasmi sekolah
+GROUP_ID = os.environ.get("-1002070657863")   # ID group rasmi sekolah
 
 
 # ======================
 # UTILS
 # ======================
-async def check_all_classes_completed(context):
 
-    today = get_today_malaysia()
-    tarikh = today.strftime("%d/%m/%Y")
-
-    records = sheet_kehadiran.get_all_records()
-
-    # Ambil semua kelas yang dah rekod hari ini
-    recorded_classes = set()
-    for r in records:
-        if r["Tarikh"] == tarikh:
-            recorded_classes.add(r["Kelas"])
-
-    # Semak kelas yang belum siap
-    belum = [k for k in ALL_CLASSES if k not in recorded_classes]
-
-    # Kalau semua dah siap
-    if not belum:
-
-        msg = (
-            "TESTING SEDANG DIJALANKAN, MESEJ INI DIJANA SECARA AUTOMATIK*\n\n"
-            "✅ *Kehadiran Lengkap Hari Ini*\n\n"
-            f"📅 Tarikh: {tarikh}\n\n"
-            "Semua kelas telah berjaya merekod kehadiran.\n"
-            "Terima kasih atas kerjasama semua guru. 🙏\n\n"
-            "📊 Sistem Tracker Kehadiran SK Labu Besar"
-        )
-
-        await context.bot.send_message(
-            chat_id=GROUP_ID,
-            text=msg,
-            parse_mode="Markdown"
-        )
 
 
 def get_today_malaysia():
@@ -146,6 +114,39 @@ def find_existing_row(kelas, tarikh):
             return idx
     return None
 
+async def check_all_classes_completed(context):
+
+    today = get_today_malaysia()
+    tarikh = today.strftime("%d/%m/%Y")
+
+    records = sheet_kehadiran.get_all_records()
+
+    # Ambil semua kelas yang dah rekod hari ini
+    recorded_classes = set()
+    for r in records:
+        if r["Tarikh"] == tarikh:
+            recorded_classes.add(r["Kelas"])
+
+    # Senarai kelas yang belum isi
+    belum = [k for k in ALL_CLASSES if k not in recorded_classes]
+
+    # Kalau semua kelas sudah siap
+    if not belum:
+
+        msg = (
+            "TESTING SEDANG DIJALANKAN. MESEJ INI DIJANA AUTOMATIK*\n\n"
+            "✅ *Kehadiran Lengkap Hari Ini*\n\n"
+            f"📅 Tarikh: {tarikh}\n\n"
+            "Semua kelas telah berjaya merekod kehadiran.\n"
+            "Terima kasih atas kerjasama semua guru. 🙏\n\n"
+            "📊 Sistem Tracker Kehadiran SK Labu Besar"
+        )
+
+        await context.bot.send_message(
+            chat_id=GROUP_ID,
+            text=msg,
+            parse_mode="Markdown"
+        )
 
 # ======================
 # START / MENU UTAMA
