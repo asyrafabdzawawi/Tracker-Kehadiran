@@ -202,12 +202,48 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     data = query.data
 
-    # ---------- SEMAK RMT HARI INI ----------
-    if data == "semak_rmt_today":
-        today = get_today_malaysia()
-        tarikh = today.strftime("%d/%m/%Y")
-        await query.edit_message_text(f"🎉 Semua murid RMT hadir hari ini.\n\n📅 {tarikh}")
-        return
+   # ---------- SEMAK RMT HARI INI ----------
+if data == "semak_rmt_today":
+
+    today = get_today_malaysia()
+    tarikh = today.strftime("%d/%m/%Y")
+
+    # Ambil semua murid RMT
+    murid_records = sheet_murid.get_all_records()
+    murid_rmt = [r["Nama Murid"] for r in murid_records if str(r.get("RMT", "")).strip().lower() == "ya"]
+
+    # Ambil rekod kehadiran hari ini
+    hadir_records = sheet_kehadiran.get_all_records()
+
+    tidak_hadir_rmt = []
+
+    for r in hadir_records:
+        if r["Tarikh"] == tarikh:
+            absent_list = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
+            for name in absent_list:
+                if name in murid_rmt:
+                    tidak_hadir_rmt.append(name)
+
+    total_rmt = len(murid_rmt)
+    hadir_rmt = total_rmt - len(tidak_hadir_rmt)
+
+    # Format mesej
+    msg = (
+        "🍱 Laporan Kehadiran RMT Hari Ini\n\n"
+        f"📅 {tarikh}\n"
+        f"📊 Hadir: {hadir_rmt} / {total_rmt}\n"
+    )
+
+    if tidak_hadir_rmt:
+        msg += f"\n❌ Tidak Hadir ({len(tidak_hadir_rmt)} murid)\n"
+        for i, n in enumerate(tidak_hadir_rmt, 1):
+            msg += f"{i}. {n}\n"
+    else:
+        msg += "\n🎉 Semua murid RMT hadir hari ini.\n"
+
+    await query.edit_message_text(msg)
+    return
+
 
     # ---------- REKOD ----------
     if data == "rekod":
