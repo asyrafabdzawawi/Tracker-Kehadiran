@@ -122,6 +122,39 @@ def find_existing_row(kelas, tarikh):
 
 
 # ======================
+# 🔔 SEMAK SEMUA KELAS & HANTAR KE GROUP
+# ======================
+async def check_all_classes_completed(context):
+
+    today = get_today_malaysia()
+    tarikh = today.strftime("%d/%m/%Y")
+
+    records = sheet_kehadiran.get_all_records()
+
+    recorded = set()
+    for r in records:
+        if r["Tarikh"] == tarikh:
+            recorded.add(r["Kelas"].strip().lower())
+
+    belum = [k for k in ALL_CLASSES if k.strip().lower() not in recorded]
+
+    if not belum:
+
+        msg = (
+            "✅ Kehadiran Lengkap Hari Ini\n\n"
+            f"📅 Tarikh: {tarikh}\n\n"
+            "Semua kelas telah berjaya merekod kehadiran.\n"
+            "Terima kasih atas kerjasama semua guru. 🙏\n\n"
+            "📊 Sistem Tracker Kehadiran SK Labu Besar"
+        )
+
+        try:
+            await context.bot.send_message(chat_id=GROUP_ID, text=msg)
+        except Exception:
+            pass
+
+
+# ======================
 # START / MENU UTAMA
 # ======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -159,7 +192,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     data = query.data
 
-    # ---------- SEMAK RMT HARI INI (FIX SAHAJA DI SINI) ----------
+    # ---------- SEMAK RMT HARI INI ----------
     if data == "semak_rmt_today":
 
         today = get_today_malaysia()
@@ -293,6 +326,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = format_attendance(kelas, tarikh, hari, total, absent)
         await query.edit_message_text("✅ Kehadiran berjaya disimpan!\n\n" + msg)
 
+        # 🔔 PANGGIL SEMAK GROUP
+        await check_all_classes_completed(context)
+
         user_state.pop(user_id, None)
         return
 
@@ -308,6 +344,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         msg = format_attendance(info["kelas"], info["tarikh"], info["hari"], info["total"], info["absent"])
         await query.edit_message_text("🔄 Rekod berjaya dioverwrite!\n\n" + msg)
+
+        # 🔔 PANGGIL SEMAK GROUP
+        await check_all_classes_completed(context)
 
         user_state.pop(user_id, None)
         return
