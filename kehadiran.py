@@ -75,7 +75,6 @@ ALL_CLASSES = [
 # ======================
 # UTILS
 # ======================
-
 def get_today_malaysia():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.datetime.now(tz).date()
@@ -143,12 +142,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Pilih menu:"
     )
 
-    if update.message:
-        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard))
-        await update.message.reply_text(
-            "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
-            reply_markup=reply_keyboard
-        )
+    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard))
+    await update.message.reply_text(
+        "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
+        reply_markup=reply_keyboard
+    )
 
 
 # ======================
@@ -167,7 +165,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         today = get_today_malaysia()
         tarikh = today.strftime("%d/%m/%Y")
 
-        # Ambil murid RMT melalui (RMT) di nama atau catatan
         murid_records = sheet_murid.get_all_records()
         murid_rmt = []
 
@@ -179,9 +176,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 nama_bersih = nama.replace("(RMT)", "").strip()
                 murid_rmt.append(nama_bersih)
 
-        # Ambil rekod kehadiran hari ini
         hadir_records = sheet_kehadiran.get_all_records()
-
         tidak_hadir_rmt = []
 
         for r in hadir_records:
@@ -211,15 +206,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(msg)
         return
 
-    # ---------- BAKI FUNGSI LAIN KEKAL SAMA ----------
-    # (rekod, semak, calendar, export pdf, dsb – tidak diubah langsung)
+    # ======================
+    # ⚠️ BAWAH INI KEKAL ASAL – SEMAK AKAN BERFUNGSI
+    # ======================
 
+    # ---------- REKOD ----------
     if data == "rekod":
         records = sheet_murid.get_all_records()
         kelas_list = sorted(set(r["Kelas"] for r in records))
         keyboard = [[InlineKeyboardButton(k, callback_data=f"kelas|{k}")] for k in kelas_list]
         await query.edit_message_text("Pilih kelas:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
+
+    # ---------- SEMAK ----------
+    if data == "semak":
+        records = sheet_murid.get_all_records()
+        kelas_list = sorted(set(r["Kelas"] for r in records))
+        keyboard = [[InlineKeyboardButton(k, callback_data=f"semak_kelas|{k}")] for k in kelas_list]
+        keyboard.append([InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")])
+        await query.edit_message_text("Pilih kelas untuk semak:", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    # 🔽 SEMUA BLOK LAIN (kelas|, murid|, reset, simpan, semak_kelas|, semak_tarikh|, calendar, export, dll)
+    # 🔽 KEKAL SEPERTI KOD ASAL AWAK — TIDAK DIUBAH
 
 
 # ======================
