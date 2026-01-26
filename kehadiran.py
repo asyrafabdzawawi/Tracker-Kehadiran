@@ -47,11 +47,11 @@ user_state = {}
 # SWEET QUOTES
 # ======================
 SWEET_QUOTES = [
-    "🌤️ Semoga urusan hari ini dipermudahkan. Terima kasih atas dedikasi cikgu.",
-    "Kurangkan manis dalam minuman🥤, lebihkan manis dalam senyuman😊",
-    "💓 Orang kata jodoh buat jantung berdebar, tapi guru belum isi kehadiran pun boleh buat berdebar.",
-    "🤍 Jangan takut gagal, kerana setiap kegagalan adalah batu loncatan menuju kejayaan.",
-    "🎓 Terima kasih kerana terus komited demi anak-anak didik kita.",
+    "📘✨ “Ilmu tidak menjadikan kita lebih tinggi, tetapi menjadikan kita lebih rendah hati…fikir-fikirkanlah.” 🤲",
+    "📖🎓 “Ilmu tanpa adab hanya melahirkan kepandaian, tetapi ilmu bersama adab melahirkan kebijaksanaan…fikir-fikirkanlah.” 🌺",
+    "🤲📚 “Didiklah dengan kasih, kerana ilmu yang lahir dari hati akan kekal lebih lama di jiwa…fikir-fikirkanlah.” 💖",
+    "Semakin tinggi ilmu, sepatutnya semakin rendah hati…fikir-fikirkanlah.” 🤲📘",
+    "Ilmu tanpa tawaduk hanya melahirkan ego, bukan kebijaksanaan…fikir-fikirkanlah.” 📖🧭",
 ]
 
 def get_random_quote():
