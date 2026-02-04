@@ -1,5 +1,5 @@
 # ======================
-# BOT KEHADIRAN FINAL VERSION (STABIL & PRODUCTION READY)
+# BOT KEHADIRAN FINAL VERSION v2 (MENU FIXED)
 # ======================
 
 # ======================
@@ -8,14 +8,12 @@
 import os, json, datetime, pytz, random
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     CallbackQueryHandler,
-    ContextTypes,
-    MessageHandler,
-    filters
+    ContextTypes
 )
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -26,7 +24,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 # ======================
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 SHEET_ID = os.environ.get("SHEET_ID")
-GROUP_ID = int(os.environ.get("GROUP_ID"))
 
 LOGO_URL = "https://raw.githubusercontent.com/asyrafabdzawawi/Tracker-Kehadiran/main/logo_tracker.jpg"
 
@@ -53,12 +50,12 @@ user_state = {}
 
 
 # ======================
-# SWEET QUOTES
+# QUOTES
 # ======================
 SWEET_QUOTES = [
-    "📘✨ Ilmu tidak menjadikan kita lebih tinggi, tetapi menjadikan kita lebih rendah hati…",
-    "📖🎓 Ilmu tanpa adab hanya melahirkan kepandaian…",
-    "🤲📚 Didiklah dengan kasih, kerana ilmu yang lahir dari hati akan kekal lebih lama…",
+    "📘✨ Ilmu tidak menjadikan kita lebih tinggi, tetapi lebih rendah hati.",
+    "📖🎓 Ilmu bersama adab melahirkan kebijaksanaan.",
+    "🤲📚 Didik dengan kasih, ilmu akan kekal di jiwa.",
 ]
 
 def get_random_quote():
@@ -75,14 +72,10 @@ def get_today_malaysia():
 
 def get_students_by_class(kelas):
     records = sheet_murid.get_all_records()
-    students = []
-    for r in records:
-        if r["Kelas"] == kelas:
-            name = r["Nama Murid"]
-            if r.get("Catatan"):
-                name += f" ({r['Catatan']})"
-            students.append(name)
-    return students
+    return [
+        r["Nama Murid"] + (f" ({r['Catatan']})" if r.get("Catatan") else "")
+        for r in records if r["Kelas"] == kelas
+    ]
 
 
 def format_attendance(kelas, tarikh, hari, total, absent):
@@ -94,30 +87,48 @@ def format_attendance(kelas, tarikh, hari, total, absent):
         f"📊 *Kehadiran*\n"
         f"{hadir}/{total}\n"
     )
-
     if absent:
-        msg += f"\n❌ Tidak Hadir ({len(absent)} murid)\n"
+        msg += "\n❌ Tidak Hadir:\n"
         for i, n in enumerate(absent, 1):
             msg += f"{i}. {n}\n"
     else:
-        msg += "\n🎉 Semua murid hadir.\n"
-
+        msg += "\n🎉 Semua murid hadir."
     return msg
 
 
 # ======================
-# FIX: HELPER KHAS UNTUK MESEJ BERGAMBAR
+# HELPER: EDIT CAPTION
 # ======================
-async def edit_caption(query, text, keyboard=None):
+async def edit_caption(query, text, keyboard):
     await query.edit_message_caption(
         caption=text,
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
 # ======================
-# START / MENU UTAMA
+# MAIN MENU (FIXED)
+# ======================
+async def show_main_menu(query):
+    keyboard = [
+        [InlineKeyboardButton("📋 Rekod Kehadiran", callback_data="rekod")],
+        [InlineKeyboardButton("🔍 Semak Kehadiran", callback_data="semak")],
+        [InlineKeyboardButton("🍱 Semak RMT Hari Ini", callback_data="semak_rmt_today")]
+    ]
+
+    caption = (
+        "🏫 *Tracker Kehadiran Murid*\n"
+        "*SK Labu Besar*\n\n"
+        f"💬 {get_random_quote()}\n\n"
+        "⬇️ *Pilih menu*"
+    )
+
+    await edit_caption(query, caption, keyboard)
+
+
+# ======================
+# START (/start sahaja)
 # ======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -154,49 +165,44 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ---------- MENU ----------
     if data == "menu":
-        await start(query.message, context)
+        await show_main_menu(query)
         return
 
-    # ---------- SEMAK RMT ----------
+    # ---------- RMT ----------
     if data == "semak_rmt_today":
         today = get_today_malaysia()
         tarikh = today.strftime("%d/%m/%Y")
 
-        murid_records = sheet_murid.get_all_records()
-        all_rmt = set()
-        tidak_hadir = {}
+        murid = sheet_murid.get_all_records()
+        hadir = sheet_kehadiran.get_all_records()
 
-        for r in murid_records:
-            if "RMT" in (r.get("Catatan", "") + r["Nama Murid"]).upper():
-                all_rmt.add(r["Nama Murid"].replace("(RMT)", "").strip())
+        rmt = {
+            r["Nama Murid"].replace("(RMT)", "").strip()
+            for r in murid if "RMT" in (r["Nama Murid"] + str(r.get("Catatan", ""))).upper()
+        }
 
-        hadir_records = sheet_kehadiran.get_all_records()
-        for r in hadir_records:
-            if r["Tarikh"] == tarikh:
-                for n in r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []:
-                    n = n.replace("(RMT)", "").strip()
-                    if n in all_rmt:
-                        tidak_hadir.setdefault(r["Kelas"], []).append(n)
-
-        total = len(all_rmt)
-        total_absent = sum(len(v) for v in tidak_hadir.values())
-        hadir = total - total_absent
+        tidak_hadir = set()
+        for r in hadir:
+            if r["Tarikh"] == tarikh and r["Tidak Hadir"]:
+                for n in r["Tidak Hadir"].split(", "):
+                    if n in rmt:
+                        tidak_hadir.add(n)
 
         msg = (
             "🍱 *Laporan Kehadiran RMT Hari Ini*\n\n"
             f"📅 {tarikh}\n"
-            f"📊 Hadir: {hadir}/{total}\n"
+            f"📊 Hadir: {len(rmt)-len(tidak_hadir)}/{len(rmt)}"
         )
 
-        keyboard = [[InlineKeyboardButton("⬅️ Menu Utama", callback_data="menu")]]
-
-        await edit_caption(query, msg, keyboard)
+        await edit_caption(query, msg, [
+            [InlineKeyboardButton("⬅️ Menu Utama", callback_data="menu")]
+        ])
         return
 
     # ---------- REKOD ----------
     if data == "rekod":
         records = sheet_murid.get_all_records()
-        kelas_list = sorted(set(r["Kelas"] for r in records))
+        kelas_list = sorted({r["Kelas"] for r in records})
 
         keyboard, row = [], []
         for k in kelas_list:
@@ -228,27 +234,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_student_buttons(query, user_id)
         return
 
-    # ---------- SEMAK ----------
-    if data == "semak":
-        records = sheet_murid.get_all_records()
-        kelas_list = sorted(set(r["Kelas"] for r in records))
-
-        keyboard, row = [], []
-        for k in kelas_list:
-            row.append(InlineKeyboardButton(k, callback_data=f"semak_kelas|{k}"))
-            if len(row) == 3:
-                keyboard.append(row)
-                row = []
-        if row:
-            keyboard.append(row)
-
-        keyboard.append([InlineKeyboardButton("⬅️ Menu Utama", callback_data="menu")])
-        await edit_caption(query, "Pilih kelas untuk semak:", keyboard)
-        return
-
 
 # ======================
-# SHOW STUDENT BUTTONS
+# STUDENT BUTTONS
 # ======================
 async def show_student_buttons(query, user_id):
 
@@ -262,14 +250,14 @@ async def show_student_buttons(query, user_id):
         state["absent"]
     )
 
-    keyboard = []
-    for n in state["students"]:
-        label = f"🔴 {n}" if n in state["absent"] else f"🟢 {n}"
-        keyboard.append([InlineKeyboardButton(label, callback_data=f"murid|{n}")])
+    keyboard = [
+        [InlineKeyboardButton(
+            ("🔴 " if n in state["absent"] else "🟢 ") + n,
+            callback_data=f"murid|{n}"
+        )] for n in state["students"]
+    ]
 
-    keyboard.append([
-        InlineKeyboardButton("⬅️ Menu Utama", callback_data="menu")
-    ])
+    keyboard.append([InlineKeyboardButton("⬅️ Menu Utama", callback_data="menu")])
 
     await edit_caption(query, msg, keyboard)
 
@@ -281,7 +269,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
-    print("🤖 Bot Kehadiran sedang berjalan...")
+    print("🤖 Bot Kehadiran berjalan (FINAL v2)...")
     app.run_polling(drop_pending_updates=True)
 
 
