@@ -192,7 +192,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     data = query.data
 
-      if data == "semak_rmt_today":
+    if data == "semak_rmt_today":
 
         today = get_today_malaysia()
         tarikh = today.strftime("%d/%m/%Y")
