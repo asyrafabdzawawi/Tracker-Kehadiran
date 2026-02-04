@@ -256,7 +256,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             for kelas in sorted(tidak_hadir_by_class):
                 murid = tidak_hadir_by_class[kelas]
-                msg += f"\n🏫 {kelas} ({len(murid)})\n"
+                msg += f"\n🏫 {kelas}\n"
                 for i, nama in enumerate(murid, 1):
                     msg += f"{i}. {nama}\n"
         else:
