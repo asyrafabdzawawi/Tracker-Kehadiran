@@ -193,51 +193,43 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
     # ---------- SEMAK RMT HARI INI ----------
-    if data == "semak_rmt_today":
+       if data == "semak_rmt_today":
 
         today = get_today_malaysia()
         tarikh = today.strftime("%d/%m/%Y")
 
         murid_records = sheet_murid.get_all_records()
-        murid_rmt = []
+
+        # ======================
+        # BINA DATA RMT → KELAS
+        # ======================
+        rmt_by_class = {}
+        all_rmt_students = set()
 
         for r in murid_records:
             nama = r["Nama Murid"]
+            kelas = r["Kelas"]
             catatan = str(r.get("Catatan", "")).upper()
 
             if "(RMT)" in nama.upper() or "RMT" in catatan:
                 nama_bersih = nama.replace("(RMT)", "").strip()
-                murid_rmt.append(nama_bersih)
+                all_rmt_students.add(nama_bersih)
 
+                if kelas not in rmt_by_class:
+                    rmt_by_class[kelas] = []
+
+                rmt_by_class[kelas].append(nama_bersih)
+
+        # ======================
+        # SEMAK KEHADIRAN
+        # ======================
         hadir_records = sheet_kehadiran.get_all_records()
-        tidak_hadir_rmt = []
+        tidak_hadir_by_class = {}
 
         for r in hadir_records:
             if r["Tarikh"] == tarikh:
-                absent_list = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
-                for name in absent_list:
-                    nama_bersih = name.replace("(RMT)", "").strip()
-                    if nama_bersih in murid_rmt:
-                        tidak_hadir_rmt.append(nama_bersih)
+                kelas = r["Kelas"]
 
-        total_rmt = len(murid_rmt)
-        hadir_rmt = total_rmt - len(tidak_hadir_rmt)
-
-        msg = (
-            "🍱 Laporan Kehadiran RMT Hari Ini\n\n"
-            f"📅 {tarikh}\n"
-            f"📊 Hadir: {hadir_rmt} / {total_rmt}\n"
-        )
-
-        if tidak_hadir_rmt:
-            msg += f"\n❌ Tidak Hadir ({len(tidak_hadir_rmt)} murid)\n"
-            for i, n in enumerate(tidak_hadir_rmt, 1):
-                msg += f"{i}. {n}\n"
-        else:
-            msg += "\n🎉 Semua murid RMT hadir hari ini.\n"
-
-        await query.edit_message_text(msg)
-        return
 
 
     # ---------- REKOD ----------
