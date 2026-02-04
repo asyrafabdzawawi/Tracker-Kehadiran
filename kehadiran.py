@@ -268,12 +268,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
     # ---------- REKOD ----------
-    if data == "rekod":
-        records = sheet_murid.get_all_records()
-        kelas_list = sorted(set(r["Kelas"] for r in records))
-        keyboard = [[InlineKeyboardButton(k, callback_data=f"kelas|{k}")] for k in kelas_list]
-        await query.edit_message_text("Pilih kelas:", reply_markup=InlineKeyboardMarkup(keyboard))
-        return
+    # ---------- REKOD ----------
+if data == "rekod":
+    records = sheet_murid.get_all_records()
+    kelas_list = sorted(set(r["Kelas"] for r in records))
+
+    keyboard = []
+    row = []
+
+    for k in kelas_list:
+        row.append(InlineKeyboardButton(k, callback_data=f"kelas|{k}"))
+        if len(row) == 3:   # ⬅️ 3 column
+            keyboard.append(row)
+            row = []
+
+    if row:  # baki kalau tak cukup 3
+        keyboard.append(row)
+
+    await query.edit_message_text(
+        "Pilih kelas:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    return
+
 
     if data.startswith("kelas|"):
         kelas = data.split("|")[1]
