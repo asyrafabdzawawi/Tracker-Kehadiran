@@ -124,6 +124,8 @@ def find_existing_row(kelas, tarikh):
 # ======================
 # START / MENU UTAMA
 # ======================
+LOGO_URL = "https://raw.githubusercontent.com/asyrafabdzawawi/Tracker-Kehadiran/main/logo_tracker.jpg"
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     inline_keyboard = [
@@ -132,21 +134,36 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🍱 Semak RMT Hari Ini", callback_data="semak_rmt_today")]
     ]
 
-    reply_keyboard = ReplyKeyboardMarkup([[KeyboardButton("🏠 Menu Utama")]], resize_keyboard=True)
+    reply_keyboard = ReplyKeyboardMarkup(
+        [[KeyboardButton("🏠 Menu Utama")]],
+        resize_keyboard=True
+    )
 
     quote = get_random_quote()
 
-    text = (
-        "🏫 Tracker Kehadiran Murid SK Labu Besar\n\n"
+    caption = (
+        "🏫 *Tracker Kehadiran Murid SK Labu Besar*\n\n"
         f"💬 {quote}\n\n"
         "Pilih menu:"
     )
 
-    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard))
+    # 📸 LOGO DARI GITHUB
+    await update.message.reply_photo(
+        photo=LOGO_URL,
+        caption=caption,
+        parse_mode="Markdown"
+    )
+
+    await update.message.reply_text(
+        "⬇️ Menu:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard)
+    )
+
     await update.message.reply_text(
         "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
         reply_markup=reply_keyboard
     )
+
 
 
 # ======================
