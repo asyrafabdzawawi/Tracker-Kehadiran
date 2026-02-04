@@ -134,34 +134,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🍱 Semak RMT Hari Ini", callback_data="semak_rmt_today")]
     ]
 
-    reply_keyboard = ReplyKeyboardMarkup(
-        [[KeyboardButton("🏠 Menu Utama")]],
-        resize_keyboard=True
-    )
-
     quote = get_random_quote()
 
     caption = (
-        "🏫 *Tracker Kehadiran Murid SK Labu Besar*\n\n"
+        "🏫 *Tracker Kehadiran Murid*\n"
+        "*SK Labu Besar*\n\n"
         f"💬 {quote}\n\n"
-        "Pilih menu:"
+        "⬇️ *Pilih menu*"
     )
 
-    # 📸 LOGO DARI GITHUB
     await update.message.reply_photo(
         photo=LOGO_URL,
         caption=caption,
-        parse_mode="Markdown"
-    )
-
-    await update.message.reply_text(
-        "⬇️ Menu:",
+        parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(inline_keyboard)
-    )
-
-    await update.message.reply_text(
-        "🏠 Tekan butang di bawah untuk kembali ke Menu Utama",
-        reply_markup=reply_keyboard
     )
 
 
