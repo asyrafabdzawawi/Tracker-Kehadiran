@@ -247,6 +247,74 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_student_buttons(query, user_id)
         return
 
+        # ---------- TOGGLE NAMA MURID ----------
+        if data.startswith("murid|"):
+            nama = data.split("|", 1)[1]
+            state = user_state.get(user_id)
+
+        if not state:
+            return
+
+        if nama in state["absent"]:
+            state["absent"].remove(nama)
+        else:
+            state["absent"].append(nama)
+
+        await show_student_buttons(query, user_id)
+        return
+
+
+    # ---------- RESET ----------
+    if data == "reset":
+        state = user_state.get(user_id)
+        if not state:
+            return
+
+        state["absent"] = []
+        await show_student_buttons(query, user_id)
+        return
+
+
+    # ---------- SEMUA HADIR ----------
+    if data == "semua_hadir":
+        state = user_state.get(user_id)
+        if not state:
+            return
+
+        state["absent"] = []
+        await show_student_buttons(query, user_id)
+        return
+
+
+    # ---------- SIMPAN ----------
+    if data == "simpan":
+        state = user_state.get(user_id)
+        if not state:
+            return
+
+        kelas = state["kelas"]
+        tarikh = state["tarikh"]
+        hari = state["hari"]
+        jumlah = len(state["students"])
+        absent = ", ".join(state["absent"])
+
+        row_idx = find_existing_row(kelas, tarikh)
+
+        if row_idx:
+            sheet_kehadiran.update(
+                f"A{row_idx}:F{row_idx}",
+                [[kelas, tarikh, hari, jumlah, absent, ""]]
+            )
+        else:
+            sheet_kehadiran.append_row(
+                [kelas, tarikh, hari, jumlah, absent, ""]
+            )
+
+        await query.edit_message_text(
+            f"✅ Kehadiran disimpan\n\n🏫 {kelas}\n📅 {tarikh}"
+        )
+        return
+
     # ---------- SEMAK (3 COLUMN) ----------
     if data == "semak":
         records = sheet_murid.get_all_records()
