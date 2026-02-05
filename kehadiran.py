@@ -122,6 +122,39 @@ def find_existing_row(kelas, tarikh):
 
 
 # ======================
+# 🔔 SEMAK SEMUA KELAS & HANTAR KE GROUP
+# ======================
+async def check_all_classes_completed(context):
+
+    today = get_today_malaysia()
+    tarikh = today.strftime("%d/%m/%Y")
+
+    records = sheet_kehadiran.get_all_records()
+
+    recorded = set()
+    for r in records:
+        if r["Tarikh"] == tarikh:
+            recorded.add(r["Kelas"].strip().lower())
+
+    belum = [k for k in ALL_CLASSES if k.strip().lower() not in recorded]
+
+    if not belum:
+
+        msg = (
+            "✅ Kehadiran Lengkap Hari Ini\n\n"
+            f"📅 Tarikh: {tarikh}\n\n"
+            "Semua kelas telah berjaya merekod kehadiran.\n"
+            "Terima kasih atas kerjasama semua guru. 🙏\n\n"
+            "📊 Sistem Tracker Kehadiran SK Labu Besar"
+        )
+
+        try:
+            await context.bot.send_message(chat_id=GROUP_ID, text=msg)
+        except Exception:
+            pass
+
+
+# ======================
 # START / MENU UTAMA
 # ======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -159,87 +192,74 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     data = query.data
 
-    # ---------- SEMAK RMT ----------
+    # ---------- SEMAK RMT HARI INI ----------
     if data == "semak_rmt_today":
+
         today = get_today_malaysia()
         tarikh = today.strftime("%d/%m/%Y")
 
         murid_records = sheet_murid.get_all_records()
-        all_rmt = set()
-        rmt_by_class = {}
+        murid_rmt = []
 
         for r in murid_records:
             nama = r["Nama Murid"]
-            kelas = r["Kelas"]
             catatan = str(r.get("Catatan", "")).upper()
 
             if "(RMT)" in nama.upper() or "RMT" in catatan:
-                nama = nama.replace("(RMT)", "").strip()
-                all_rmt.add(nama)
-                rmt_by_class.setdefault(kelas, []).append(nama)
+                nama_bersih = nama.replace("(RMT)", "").strip()
+                murid_rmt.append(nama_bersih)
 
         hadir_records = sheet_kehadiran.get_all_records()
-        tidak_hadir = {}
+        tidak_hadir_rmt = []
 
         for r in hadir_records:
             if r["Tarikh"] == tarikh:
-                for n in r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []:
-                    n = n.replace("(RMT)", "").strip()
-                    if n in all_rmt:
-                        tidak_hadir.setdefault(r["Kelas"], []).append(n)
+                absent_list = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
+                for name in absent_list:
+                    nama_bersih = name.replace("(RMT)", "").strip()
+                    if nama_bersih in murid_rmt:
+                        tidak_hadir_rmt.append(nama_bersih)
 
-        total = len(all_rmt)
-        total_absent = sum(len(v) for v in tidak_hadir.values())
-        hadir = total - total_absent
+        total_rmt = len(murid_rmt)
+        hadir_rmt = total_rmt - len(tidak_hadir_rmt)
 
         msg = (
             "🍱 Laporan Kehadiran RMT Hari Ini\n\n"
             f"📅 {tarikh}\n"
-            f"📊 Hadir: {hadir} / {total}\n"
+            f"📊 Hadir: {hadir_rmt} / {total_rmt}\n"
         )
 
-        if tidak_hadir:
-            msg += f"\n❌ Tidak Hadir ({total_absent} murid)\n"
-            for k in sorted(tidak_hadir):
-                msg += f"\n🏫 {k}\n"
-                for i, n in enumerate(tidak_hadir[k], 1):
-                    msg += f"{i}. {n}\n"
+        if tidak_hadir_rmt:
+            msg += f"\n❌ Tidak Hadir ({len(tidak_hadir_rmt)} murid)\n"
+            for i, n in enumerate(tidak_hadir_rmt, 1):
+                msg += f"{i}. {n}\n"
         else:
             msg += "\n🎉 Semua murid RMT hadir hari ini.\n"
 
         await query.edit_message_text(msg)
         return
 
-    # ---------- REKOD (3 COLUMN) ----------
+
+    # ---------- REKOD ----------
     if data == "rekod":
         records = sheet_murid.get_all_records()
         kelas_list = sorted(set(r["Kelas"] for r in records))
-
-        keyboard, row = [], []
-        for k in kelas_list:
-            row.append(InlineKeyboardButton(k, callback_data=f"kelas|{k}"))
-            if len(row) == 3:
-                keyboard.append(row)
-                row = []
-        if row:
-            keyboard.append(row)
-
-        await query.edit_message_text(
-            "Pilih kelas:",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        keyboard = [[InlineKeyboardButton(k, callback_data=f"kelas|{k}")] for k in kelas_list]
+        await query.edit_message_text("Pilih kelas:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    # ---------- PILIH KELAS REKOD ----------
     if data.startswith("kelas|"):
         kelas = data.split("|")[1]
         students = get_students_by_class(kelas)
+
         today = get_today_malaysia()
+        tarikh = today.strftime("%d/%m/%Y")
+        hari = today.strftime("%A")
 
         user_state[user_id] = {
             "kelas": kelas,
-            "tarikh": today.strftime("%d/%m/%Y"),
-            "hari": today.strftime("%A"),
+            "tarikh": tarikh,
+            "hari": hari,
             "students": students,
             "absent": []
         }
@@ -247,94 +267,110 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_student_buttons(query, user_id)
         return
 
-        # ---------- TOGGLE NAMA MURID ----------
-        if data.startswith("murid|"):
-            nama = data.split("|", 1)[1]
-            state = user_state.get(user_id)
+    # ---------- PILIH MURID ----------
+    if data.startswith("murid|"):
+        name = data.split("|")[1]
+        state = user_state[user_id]
 
-        if not state:
-            return
-
-        if nama in state["absent"]:
-            state["absent"].remove(nama)
+        if name in state["absent"]:
+            state["absent"].remove(name)
         else:
-            state["absent"].append(nama)
+            state["absent"].append(name)
 
         await show_student_buttons(query, user_id)
         return
-
 
     # ---------- RESET ----------
     if data == "reset":
-        state = user_state.get(user_id)
-        if not state:
-            return
-
-        state["absent"] = []
+        user_state[user_id]["absent"] = []
         await show_student_buttons(query, user_id)
         return
 
+    # ---------- SIMPAN / SEMUA HADIR ----------
+    if data in ["simpan", "semua_hadir"]:
 
-    # ---------- SEMUA HADIR ----------
-    if data == "semua_hadir":
-        state = user_state.get(user_id)
-        if not state:
-            return
-
-        state["absent"] = []
-        await show_student_buttons(query, user_id)
-        return
-
-
-    # ---------- SIMPAN ----------
-    if data == "simpan":
-        state = user_state.get(user_id)
-        if not state:
-            return
-
+        state = user_state[user_id]
         kelas = state["kelas"]
         tarikh = state["tarikh"]
         hari = state["hari"]
-        jumlah = len(state["students"])
-        absent = ", ".join(state["absent"])
+        total = len(state["students"])
 
-        row_idx = find_existing_row(kelas, tarikh)
+        absent = [] if data == "semua_hadir" else state["absent"]
+        hadir = total - len(absent)
 
-        if row_idx:
-            sheet_kehadiran.update(
-                f"A{row_idx}:F{row_idx}",
-                [[kelas, tarikh, hari, jumlah, absent, ""]]
+        row = find_existing_row(kelas, tarikh)
+
+        if row:
+            user_state[user_id]["pending_overwrite"] = {
+                "row": row,
+                "kelas": kelas,
+                "tarikh": tarikh,
+                "hari": hari,
+                "hadir": hadir,
+                "total": total,
+                "absent": absent
+            }
+
+            keyboard = [[
+                InlineKeyboardButton("✅ Ya, Overwrite", callback_data="confirm_overwrite"),
+                InlineKeyboardButton("❌ Batal", callback_data="cancel_overwrite")
+            ]]
+
+            await query.edit_message_text(
+                f"⚠️ Rekod kehadiran untuk\n\n🏫 {kelas}\n🗓 {tarikh}\n\nsudah wujud.\n\nAdakah anda mahu overwrite?",
+                reply_markup=InlineKeyboardMarkup(keyboard)
             )
-        else:
-            sheet_kehadiran.append_row(
-                [kelas, tarikh, hari, jumlah, absent, ""]
-            )
+            return
 
-        await query.edit_message_text(
-            f"✅ Kehadiran disimpan\n\n🏫 {kelas}\n📅 {tarikh}"
-        )
+        sheet_kehadiran.append_row([tarikh, hari, kelas, hadir, total, ", ".join(absent)])
+        msg = format_attendance(kelas, tarikh, hari, total, absent)
+        await query.edit_message_text("✅ Kehadiran berjaya disimpan!\n\n" + msg)
+
+        # 🔔 PANGGIL SEMAK GROUP
+        await check_all_classes_completed(context)
+
+        user_state.pop(user_id, None)
         return
 
-    # ---------- SEMAK (3 COLUMN) ----------
+    # ---------- CONFIRM OVERWRITE ----------
+    if data == "confirm_overwrite":
+
+        info = user_state[user_id]["pending_overwrite"]
+        sheet_kehadiran.delete_rows(info["row"])
+        sheet_kehadiran.append_row([
+            info["tarikh"], info["hari"], info["kelas"],
+            info["hadir"], info["total"], ", ".join(info["absent"])
+        ])
+
+        msg = format_attendance(info["kelas"], info["tarikh"], info["hari"], info["total"], info["absent"])
+        await query.edit_message_text("🔄 Rekod berjaya dioverwrite!\n\n" + msg)
+
+        # 🔔 PANGGIL SEMAK GROUP
+        await check_all_classes_completed(context)
+
+        user_state.pop(user_id, None)
+        return
+
+    # ---------- BATAL OVERWRITE ----------
+    if data == "cancel_overwrite":
+        await query.edit_message_text("❌ Overwrite dibatalkan. Rekod asal dikekalkan.")
+        user_state.pop(user_id, None)
+        return
+
+    # ---------- SEMAK ----------
     if data == "semak":
         records = sheet_murid.get_all_records()
         kelas_list = sorted(set(r["Kelas"] for r in records))
 
-        keyboard, row = [], []
-        for k in kelas_list:
-            row.append(InlineKeyboardButton(k, callback_data=f"semak_kelas|{k}"))
-            if len(row) == 3:
-                keyboard.append(row)
-                row = []
-        if row:
-            keyboard.append(row)
-
+        keyboard = [[InlineKeyboardButton(k, callback_data=f"semak_kelas|{k}")] for k in kelas_list]
         keyboard.append([InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")])
 
-        await query.edit_message_text(
-            "Pilih kelas untuk semak:",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        await query.edit_message_text("Pilih kelas untuk semak:", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    # ---------- EXPORT PDF ----------
+    if data == "export_pdf_weekly":
+        await export_pdf_weekly(query)
         return
 
     # ---------- PILIH KELAS SEMAK ----------
@@ -405,11 +441,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kelas = state["semak_kelas"]
 
         await show_record_for_date(query, kelas, target_date)
-        return
-
-    # ---------- EXPORT PDF ----------
-    if data == "export_pdf_weekly":
-        await export_pdf_weekly(query)
         return
 
 
