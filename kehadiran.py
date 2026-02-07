@@ -275,7 +275,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = []
         row = []
 
-       for k in kelas_list:
+        for k in kelas_list:
             row.append(InlineKeyboardButton(k, callback_data=f"kelas|{k}"))
             if len(row) == 3:
                 keyboard.append(row)
