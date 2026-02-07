@@ -271,8 +271,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "rekod":
         records = sheet_murid.get_all_records()
         kelas_list = sorted(set(r["Kelas"] for r in records))
-       keyboard = []
-       row = []
+        
+        keyboard = []
+        row = []
 
        for k in kelas_list:
             row.append(InlineKeyboardButton(k, callback_data=f"kelas|{k}"))
@@ -405,9 +406,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         for k in kelas_list:
             row.append(InlineKeyboardButton(k, callback_data=f"semak_kelas|{k}"))
-        if len(row) == 3:
-            keyboard.append(row)
-            row = []
+            if len(row) == 3:
+                keyboard.append(row)
+                row = []
 
         if row:
             keyboard.append(row)
