@@ -47,11 +47,11 @@ user_state = {}
 # SWEET QUOTES
 # ======================
 SWEET_QUOTES = [
-    "📘✨ “Ilmu tidak menjadikan kita lebih tinggi, tetapi menjadikan kita lebih rendah hati…fikir-fikirkanlah.” 🤲",
-    "📖🎓 “Ilmu tanpa adab hanya melahirkan kepandaian, tetapi ilmu bersama adab melahirkan kebijaksanaan…fikir-fikirkanlah.” 🌺",
-    "🤲📚 “Didiklah dengan kasih, kerana ilmu yang lahir dari hati akan kekal lebih lama di jiwa…fikir-fikirkanlah.” 💖",
-    "Semakin tinggi ilmu, sepatutnya semakin rendah hati…fikir-fikirkanlah.” 🤲📘",
-    "Ilmu tanpa tawaduk hanya melahirkan ego, bukan kebijaksanaan…fikir-fikirkanlah.” 📖🧭",
+    "🌟 Seorang guru mungkin tidak tahu sejauh mana ilmunya pergi,👩‍🏫👨‍🏫 tetapi setiap ajaran akan terus hidup dalam diri murid.❤️ Terima kasih kerana terus mendidik dengan sabar dan ikhlas.",
+    "☕📚 Penat itu sementara,❤️ tapi kesan didikan seorang guru boleh kekal seumur hidup. 🌱",
+    "💥 Kekuatan sebenar bukan terletak pada tidak pernah jatuh,🚶‍♂️⬆️ tetapi pada kemampuan untuk bangun semula,🔁 setiap kali terjatuh.",
+    "🌫️ Kebimbangan tidak menghilangkan masalah hari esok,🧠💭 tetapi ia menghilangkan ketenangan hari ini. 🕊️✨",
+    "🚶‍♂️✨ Langkah pertama untuk mencapai sesuatu💭💪 adalah percaya bahawa anda mampu melakukannya. 🌱",
 ]
 
 def get_random_quote():
@@ -170,7 +170,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     quote = get_random_quote()
 
     text = (
-        "🏫 Tracker Kehadiran Murid SK Labu Besar\n\n"
+        "<b>🏫 Tracker Kehadiran Murid SK Labu Besar</b>\n\n"
         f"💬 {quote}\n\n"
         "Pilih menu:"
     )
