@@ -271,7 +271,18 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "rekod":
         records = sheet_murid.get_all_records()
         kelas_list = sorted(set(r["Kelas"] for r in records))
-        keyboard = [[InlineKeyboardButton(k, callback_data=f"kelas|{k}")] for k in kelas_list]
+       keyboard = []
+       row = []
+
+       for k in kelas_list:
+            row.append(InlineKeyboardButton(k, callback_data=f"kelas|{k}"))
+            if len(row) == 3:
+                keyboard.append(row)
+                row = []
+
+        if row:
+            keyboard.append(row)
+
         await query.edit_message_text("Pilih kelas:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
@@ -389,8 +400,22 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         records = sheet_murid.get_all_records()
         kelas_list = sorted(set(r["Kelas"] for r in records))
 
-        keyboard = [[InlineKeyboardButton(k, callback_data=f"semak_kelas|{k}")] for k in kelas_list]
-        keyboard.append([InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")])
+        keyboard = []
+        row = []
+
+        for k in kelas_list:
+            row.append(InlineKeyboardButton(k, callback_data=f"semak_kelas|{k}"))
+        if len(row) == 3:
+            keyboard.append(row)
+            row = []
+
+        if row:
+            keyboard.append(row)
+
+        keyboard.append([
+            InlineKeyboardButton("📄 Export PDF Mingguan", callback_data="export_pdf_weekly")
+        ])
+
 
         await query.edit_message_text("Pilih kelas untuk semak:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
