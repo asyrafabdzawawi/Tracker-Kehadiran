@@ -669,11 +669,11 @@ async def export_pdf_weekly(query):
             story.append(Spacer(1, 12))
 
     if not ada_data:
-        try:
-            await query.edit_message_text("❌ Tiada data kehadiran untuk minggu ini.")
-        except Exception:
-            pass
-        return
+        story.append(Paragraph(
+            "Tiada rekod kehadiran direkodkan setakat ini untuk minggu ini.",
+        styles["Normal"]
+    ))
+        story.append(Spacer(1, 12))
 
     # 📊 Bar Chart Ranking Mingguan
     summary, top3 = generate_weekly_summary()
