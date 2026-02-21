@@ -52,11 +52,11 @@ user_state = {}
 # SWEET QUOTES
 # ======================
 SWEET_QUOTES = [
-    "🌟 Seorang guru mungkin tidak tahu sejauh mana ilmunya pergi,👩‍🏫👨‍🏫 tetapi setiap ajaran akan terus hidup dalam diri murid.❤️ Terima kasih kerana terus mendidik dengan sabar dan ikhlas.",
-    "☕📚 Penat itu sementara,❤️ tapi kesan didikan seorang guru boleh kekal seumur hidup. 🌱",
-    "💥 Kekuatan sebenar bukan terletak pada tidak pernah jatuh,🚶‍♂️⬆️ tetapi pada kemampuan untuk bangun semula,🔁 setiap kali terjatuh.",
-    "🌫️ Kebimbangan tidak menghilangkan masalah hari esok,🧠💭 tetapi ia menghilangkan ketenangan hari ini. 🕊️✨",
-    "🚶‍♂️✨ Langkah pertama untuk mencapai sesuatu💭💪 adalah percaya bahawa anda mampu melakukannya. 🌱",
+    "🌙✨ Selamat menunaikan ibadah puasa, semoga Ramadan kali ini membawa keberkatan yang melimpah, ketenangan dalam hati, kesihatan yang baik serta pahala yang berlipat ganda buat kita semua 🤲💖",
+    "🕌🌟 Salam Ramadan Al-Mubarak, semoga setiap amalan yang kita lakukan sepanjang bulan mulia ini diterima Allah SWT dan menjadi asbab kebaikan di dunia serta akhirat 🤲📖✨",
+    "🕌💚 Ramadan yang penuh barakah ini semoga mendidik hati kita menjadi lebih sabar, lebih bersyukur dan lebih dekat kepada Allah SWT dalam setiap keadaan 🤲✨",
+    "🌙🤍 Selamat berpuasa, semoga kita diberikan kekuatan menahan lapar dan dahaga, kesabaran dalam menghadapi ujian serta keikhlasan dalam setiap ibadah yang dilakukan 💫🤲",
+    "🌅🍽️ Semoga setiap waktu sahur dan berbuka menjadi saat yang penuh makna, mengeratkan silaturahim serta mengundang keberkatan dalam keluarga tercinta 🌙💞",
 ]
 
 def get_random_quote():
@@ -176,7 +176,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     quote = get_random_quote()
 
     text = (
-        "<b>🏫 Tracker Kehadiran Murid SK Labu Besar</b>\n\n"
+        "🏫 Tracker Kehadiran Murid SK Labu Besar\n\n"
         f"💬 {quote}\n\n"
         "Pilih menu:"
     )
