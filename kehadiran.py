@@ -722,7 +722,10 @@ def generate_weekly_summary():
 
         for r in daily:
             kelas = r["Kelas"]
-            total = int(r["Jumlah"])
+            try:
+                total = int(r["Jumlah"])
+            except (ValueError, TypeError):
+                continue
             absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
             hadir = total - len(absent)
 
@@ -765,7 +768,10 @@ def calculate_3_month_trend():
 
         if tarikh_obj >= three_months_ago:
             kelas = r["Kelas"]
-            total = int(r["Jumlah"])
+            try:
+                total = int(r["Jumlah"])
+            except (ValueError, TypeError):
+                continue
             absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
             hadir = total - len(absent)
 
@@ -787,11 +793,21 @@ def detect_decline_two_weeks():
 
     for r in records:
         kelas = r["Kelas"]
-        total = int(r["Jumlah"])
+
+        try:
+            total = int(r["Jumlah"])
+        except (ValueError, TypeError):
+            continue
+
+        if total <= 0:
+            continue
+
         absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
         hadir = total - len(absent)
 
-        statistik.setdefault(kelas, []).append(hadir / total * 100)
+        percent = (hadir / total) * 100
+
+        statistik.setdefault(kelas, []).append(percent)
 
     decline = []
     for kelas, values in statistik.items():
