@@ -2,6 +2,7 @@ python-telegram-bot[job-queue]==20.7
 firebase-admin
 gspread
 google-auth
+oauth2client
 pytz
 reportlab
 pillow
