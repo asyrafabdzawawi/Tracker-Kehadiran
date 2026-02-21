@@ -713,19 +713,25 @@ async def export_pdf_weekly(query):
 
 async def show_smart_dashboard(query):
 
-    monthly_summary, top3 = generate_monthly_summary()
+    # 🏆 Top 3 Bulanan
+    monthly_summary, monthly_top3 = generate_monthly_summary()
+
+    # 📊 Ranking Mingguan
+    weekly_summary, _ = generate_weekly_summary()
+
     decline = detect_decline_two_weeks()
     trend = calculate_1_month_trend()
 
-    msg = "📊 Statistik Kehadiran \n\n"
+    msg = "📊 Statistik Kehadiran\n\n"
 
-    # 🏆 Top 3
+    # 🏆 Top 3 Bulanan
     msg += "🏆 Top 3 Kehadiran Bulanan\n"
-    for i, (k, p) in enumerate(top3):
+    for i, (k, p) in enumerate(monthly_top3):
         medal = ["🥇","🥈","🥉"][i]
         msg += f"{medal} {k} - {p:.1f}%\n"
 
-    msg += "\n" + monthly_summary + "\n\n"
+    # 📊 Ranking Mingguan (guna weekly)
+    msg += "\n" + weekly_summary + "\n\n"
 
     if decline:
         msg += "⚠️ Kehadiran merosot dalam tempoh 2 minggu:\n"
