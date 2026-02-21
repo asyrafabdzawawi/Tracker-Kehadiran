@@ -954,10 +954,13 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     # Auto Jumaat 2PM (Malaysia Time)
+    
+    FRIDAY = 4
+    
     app.job_queue.run_daily(
         auto_send_friday_report,
         time=time(14, 0, tzinfo=ZoneInfo("Asia/Kuala_Lumpur")),
-        days=(4,)
+        days=(FRIDAY,)
     )
 
     app.add_handler(CommandHandler("start", start))
