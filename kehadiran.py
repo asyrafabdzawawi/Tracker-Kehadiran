@@ -15,6 +15,14 @@ from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.lib import colors
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from datetime import time
+from zoneinfo import ZoneInfo
+
+app.job_queue.run_daily(
+    auto_send_friday_report,
+    time=time(14, 0, tzinfo=ZoneInfo("Asia/Kuala_Lumpur")),
+    days=(4,)
+)
 
 
 # ======================
