@@ -713,14 +713,14 @@ async def export_pdf_weekly(query):
 
 async def show_smart_dashboard(query):
 
-    weekly_summary, top3 = generate_weekly_summary()
+    wmonthly_summary, top3 = generate_monthly_summary()
     decline = detect_decline_two_weeks()
     trend = calculate_1_month_trend()
 
     msg = "📊 SMART MONITORING SYSTEM 4.1\n\n"
 
     # 🏆 Top 3
-    msg += "🏆 Top 3 Kehadiran Mingguan\n"
+    msg += "🏆 Top 3 Kehadiran Bulanan\n"
     for i, (k, p) in enumerate(top3):
         medal = ["🥇","🥈","🥉"][i]
         msg += f"{medal} {k} - {p:.1f}%\n"
@@ -784,6 +784,56 @@ def generate_weekly_summary():
 
     return msg, ranking[:3]
 
+def generate_monthly_summary():
+
+    today = get_today_malaysia()
+    one_month_ago = today - datetime.timedelta(days=30)
+
+    records = sheet_kehadiran.get_all_records()
+    statistik = {}
+
+    for r in records:
+
+        try:
+            tarikh_obj = datetime.datetime.strptime(r["Tarikh"], "%d/%m/%Y").date()
+        except:
+            continue
+
+        if tarikh_obj < one_month_ago:
+            continue
+
+        kelas = r["Kelas"]
+
+        try:
+            total = int(r["Jumlah"])
+        except:
+            continue
+
+        if total <= 0:
+            continue
+
+        absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
+        hadir = total - len(absent)
+
+        statistik.setdefault(kelas, {"hadir": 0, "total": 0})
+        statistik[kelas]["hadir"] += hadir
+        statistik[kelas]["total"] += total
+
+    if not statistik:
+        return "Tiada data bulan ini.", []
+
+    ranking = []
+    for kelas, data in statistik.items():
+        percent = (data["hadir"] / data["total"]) * 100
+        ranking.append((kelas, percent))
+
+    ranking.sort(key=lambda x: x[1], reverse=True)
+
+    msg = "📊 Ranking Bulanan\n"
+    for i, (k, p) in enumerate(ranking):
+        msg += f"{i+1}. {k} - {p:.1f}%\n"
+
+    return msg, ranking[:3]
 
 def calculate_1_month_trend():
 
