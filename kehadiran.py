@@ -10,6 +10,9 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics.charts.barcharts import VerticalBarChart
+from reportlab.lib import colors
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -672,6 +675,28 @@ async def export_pdf_weekly(query):
             pass
         return
 
+    # 📊 Bar Chart Ranking Mingguan
+    summary, top3 = generate_weekly_summary()
+
+    if top3:
+
+        drawing = Drawing(400, 200)
+        chart = VerticalBarChart()
+        chart.x = 50
+        chart.y = 50
+        chart.height = 125
+        chart.width = 300
+
+        chart.data = [[p for _, p in top3]]
+        chart.categoryAxis.categoryNames = [k for k, _ in top3]
+        chart.valueAxis.valueMin = 0
+        chart.valueAxis.valueMax = 100
+
+        drawing.add(chart)
+        story.append(Spacer(1, 20))
+        story.append(Paragraph("Graf Top 3 Kehadiran Mingguan", styles["Heading2"]))
+        story.append(drawing)
+        
     doc.build(story)
 
     await query.message.reply_document(
@@ -686,21 +711,28 @@ async def export_pdf_weekly(query):
 
 async def show_smart_dashboard(query):
 
-    weekly = generate_weekly_summary()
+    weekly_summary, top3 = generate_weekly_summary()
     decline = detect_decline_two_weeks()
-    trend3 = calculate_3_month_trend()
+    trend = calculate_1_month_trend()
 
-    msg = "📊 SMART MONITORING SYSTEM 4.0\n\n"
-    msg += weekly + "\n\n"
+    msg = "📊 SMART MONITORING SYSTEM 4.1\n\n"
+
+    # 🏆 Top 3
+    msg += "🏆 Top 3 Kehadiran Mingguan\n"
+    for i, (k, p) in enumerate(top3):
+        medal = ["🥇","🥈","🥉"][i]
+        msg += f"{medal} {k} - {p:.1f}%\n"
+
+    msg += "\n" + weekly_summary + "\n\n"
 
     if decline:
-        msg += "🧠 2 Minggu Menurun:\n"
+        msg += "⚠️ Kehadiran merosot dalam tempoh 2 minggu:\n"
         for k in decline:
-            msg += f"⚠️ {k}\n"
+            msg += f"- {k}\n"
         msg += "\n"
 
-    msg += "📈 Trend 3 Bulan:\n"
-    for k, v in trend3.items():
+    msg += "📈 Trend 1 Bulan (Tertinggi → Terendah)\n"
+    for k, v in trend:
         msg += f"{k} - {v:.1f}%\n"
 
     await query.edit_message_text(msg)
@@ -709,7 +741,7 @@ async def show_smart_dashboard(query):
 def generate_weekly_summary():
 
     today = get_today_malaysia()
-    start = today - datetime.timedelta(days=today.weekday())
+    start = today - datetime.timedelta(days=(today.weekday() + 1) % 7)
 
     records = sheet_kehadiran.get_all_records()
     statistik = {}
@@ -724,8 +756,9 @@ def generate_weekly_summary():
             kelas = r["Kelas"]
             try:
                 total = int(r["Jumlah"])
-            except (ValueError, TypeError):
+            except:
                 continue
+
             absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
             hadir = total - len(absent)
 
@@ -734,7 +767,7 @@ def generate_weekly_summary():
             statistik[kelas]["total"] += total
 
     if not statistik:
-        return "Tiada data minggu ini."
+        return "Tiada data minggu ini.", []
 
     ranking = []
     for kelas, data in statistik.items():
@@ -743,47 +776,56 @@ def generate_weekly_summary():
 
     ranking.sort(key=lambda x: x[1], reverse=True)
 
-    medals = ["🥇", "🥈", "🥉"]
-
-    msg = "🏆 Ranking Mingguan\n"
+    msg = "📊 Ranking Mingguan\n"
     for i, (k, p) in enumerate(ranking):
-        icon = medals[i] if i < 3 else ""
-        msg += f"{i+1}. {icon} {k} - {p:.1f}%\n"
+        msg += f"{i+1}. {k} - {p:.1f}%\n"
 
-    msg += f"\n⚠️ Terendah: {ranking[-1][0]} ({ranking[-1][1]:.1f}%)"
-
-    return msg
+    return msg, ranking[:3]
 
 
-def calculate_3_month_trend():
+def calculate_1_month_trend():
 
     today = get_today_malaysia()
-    three_months_ago = today - datetime.timedelta(days=90)
+    one_month_ago = today - datetime.timedelta(days=30)
 
     records = sheet_kehadiran.get_all_records()
     statistik = {}
 
     for r in records:
-        tarikh_obj = datetime.datetime.strptime(r["Tarikh"], "%d/%m/%Y").date()
 
-        if tarikh_obj >= three_months_ago:
-            kelas = r["Kelas"]
-            try:
-                total = int(r["Jumlah"])
-            except (ValueError, TypeError):
-                continue
-            absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
-            hadir = total - len(absent)
+        try:
+            tarikh_obj = datetime.datetime.strptime(r["Tarikh"], "%d/%m/%Y").date()
+        except:
+            continue
 
-            statistik.setdefault(kelas, {"hadir": 0, "total": 0})
-            statistik[kelas]["hadir"] += hadir
-            statistik[kelas]["total"] += total
+        if tarikh_obj < one_month_ago:
+            continue
 
-    trend = {}
+        kelas = r["Kelas"]
+
+        try:
+            total = int(r["Jumlah"])
+        except:
+            continue
+
+        if total <= 0:
+            continue
+
+        absent = r["Tidak Hadir"].split(", ") if r["Tidak Hadir"] else []
+        hadir = total - len(absent)
+
+        statistik.setdefault(kelas, {"hadir": 0, "total": 0})
+        statistik[kelas]["hadir"] += hadir
+        statistik[kelas]["total"] += total
+
+    ranking = []
     for kelas, data in statistik.items():
-        trend[kelas] = (data["hadir"] / data["total"]) * 100
+        percent = (data["hadir"] / data["total"]) * 100
+        ranking.append((kelas, percent))
 
-    return trend
+    ranking.sort(key=lambda x: x[1], reverse=True)
+
+    return ranking
 
 
 def detect_decline_two_weeks():
@@ -825,10 +867,18 @@ async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def auto_send_friday_report(context: ContextTypes.DEFAULT_TYPE):
 
-    summary = generate_weekly_summary()
+    summary, top3 = generate_weekly_summary()
     decline = detect_decline_two_weeks()
 
     msg = "📡 AUTO LAPORAN JUMAAT\n\n"
+
+    if top3:
+        msg += "🏆 Top 3 Mingguan\n"
+        for i, (k, p) in enumerate(top3):
+            medal = ["🥇","🥈","🥉"][i]
+            msg += f"{medal} {k} - {p:.1f}%\n"
+        msg += "\n"
+
     msg += summary
 
     if decline:
