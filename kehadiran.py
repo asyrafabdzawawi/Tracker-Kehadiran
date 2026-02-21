@@ -713,11 +713,11 @@ async def export_pdf_weekly(query):
 
 async def show_smart_dashboard(query):
 
-    wmonthly_summary, top3 = generate_monthly_summary()
+    monthly_summary, top3 = generate_monthly_summary()
     decline = detect_decline_two_weeks()
     trend = calculate_1_month_trend()
 
-    msg = "📊 SMART MONITORING SYSTEM 4.1\n\n"
+    msg = "📊 Statistik Kehadiran \n\n"
 
     # 🏆 Top 3
     msg += "🏆 Top 3 Kehadiran Bulanan\n"
@@ -725,7 +725,7 @@ async def show_smart_dashboard(query):
         medal = ["🥇","🥈","🥉"][i]
         msg += f"{medal} {k} - {p:.1f}%\n"
 
-    msg += "\n" + weekly_summary + "\n\n"
+    msg += "\n" + monthly_summary + "\n\n"
 
     if decline:
         msg += "⚠️ Kehadiran merosot dalam tempoh 2 minggu:\n"
