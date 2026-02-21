@@ -928,7 +928,7 @@ async def auto_send_friday_report(context: ContextTypes.DEFAULT_TYPE):
     summary, top3 = generate_weekly_summary()
     decline = detect_decline_two_weeks()
 
-    msg = "📡 AUTO LAPORAN JUMAAT\n\n"
+    msg = "📡 AUTO LAPORAN KEHADIRAN MINGGUAN\n\n"
 
     if top3:
         msg += "🏆 Top 3 Mingguan\n"
