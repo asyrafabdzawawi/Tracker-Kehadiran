@@ -972,9 +972,9 @@ async def auto_reminder_unupdated_classes(context: ContextTypes.DEFAULT_TYPE):
         return
 
     msg = (
-        "⏰ PERINGATAN PENGEMASKINIAN KEHADIRAN KELAS \n\n"
+        "⏰ PERINGATAN PENGISIAN KEHADIRAN KELAS \n\n"
         f"📅 {tarikh}\n\n"
-        "Kelas berikut masih belum mengemaskini kehadiran:\n\n"
+        "Kelas berikut masih belum mengisi kehadiran:\n\n"
     )
 
     for i, kelas in enumerate(belum_update, 1):
