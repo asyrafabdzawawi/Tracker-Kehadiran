@@ -945,6 +945,49 @@ async def auto_send_friday_report(context: ContextTypes.DEFAULT_TYPE):
             msg += f"⚠️ {k}\n"
 
     await context.bot.send_message(chat_id=GROUP_ID, text=msg)
+
+# ======================
+# 🔔 AUTO REMINDER 9:45 PAGI
+# ======================
+
+async def auto_reminder_unupdated_classes(context: ContextTypes.DEFAULT_TYPE):
+
+    today = get_today_malaysia()
+    tarikh = today.strftime("%d/%m/%Y")
+
+    records = sheet_kehadiran.get_all_records()
+
+    recorded = set()
+    for r in records:
+        if r["Tarikh"] == tarikh:
+            recorded.add(r["Kelas"].strip().lower())
+
+    belum_update = [
+        k for k in ALL_CLASSES
+        if k.strip().lower() not in recorded
+    ]
+
+    if not belum_update:
+        # Semua dah update, tak perlu hantar apa-apa
+        return
+
+    msg = (
+        "⏰ PERINGATAN PENGEMASKINIAN KEHADIRAN KELAS \n\n"
+        f"📅 {tarikh}\n\n"
+        "Kelas berikut masih belum mengemaskini kehadiran:\n\n"
+    )
+
+    for i, kelas in enumerate(belum_update, 1):
+        msg += f"{i}. {kelas}\n"
+
+    msg += "\n⚠️ Mohon guru semasa ambil tindakan segera.\n\n"
+    msg += "\n Mesej ini dijana secara automatik.\n\n"
+    msg += "📊 Sistem Tracker Kehadiran SK Labu Besar"
+
+    try:
+        await context.bot.send_message(chat_id=GROUP_ID, text=msg)
+    except Exception:
+        pass
 # ======================
 # MAIN
 # ======================
@@ -961,6 +1004,14 @@ def main():
         auto_send_friday_report,
         time=time(14, 0, tzinfo=ZoneInfo("Asia/Kuala_Lumpur")),
         days=(FRIDAY,)
+    )
+
+    # Auto Reminder 9:45 pagi (Isnin - Jumaat)
+
+    app.job_queue.run_daily(
+        auto_reminder_unupdated_classes,
+        time=time(9, 45, tzinfo=ZoneInfo("Asia/Kuala_Lumpur")),
+        days=(6,0,1,2,3)  # Isnin hingga Jumaat
     )
 
     app.add_handler(CommandHandler("start", start))
