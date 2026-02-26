@@ -1010,8 +1010,8 @@ def main():
 
     app.job_queue.run_daily(
         auto_reminder_unupdated_classes,
-        time=time(11, 10, tzinfo=ZoneInfo("Asia/Kuala_Lumpur")),
-        days=(6,0,1,2,3)  # Isnin hingga Jumaat
+        time=time(11, 15, tzinfo=ZoneInfo("Asia/Kuala_Lumpur")),
+        days=(0,1,2,3,4)  # Isnin hingga Jumaat
     )
 
     app.add_handler(CommandHandler("start", start))
