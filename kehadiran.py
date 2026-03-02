@@ -84,13 +84,27 @@ def get_today_malaysia():
     tz = pytz.timezone("Asia/Kuala_Lumpur")
     return datetime.datetime.now(tz).date()
 
+def clean_student_name(full_name):
+    if not full_name:
+        return full_name
+
+    words = full_name.strip().split()
+    cleaned_words = []
+
+    for w in words:
+        if w.upper() in ["BIN", "BINTI"]:
+            break
+        cleaned_words.append(w)
+
+    return " ".join(cleaned_words)
+
 
 def get_students_by_class(kelas):
     records = sheet_murid.get_all_records()
     students = []
     for r in records:
         if r["Kelas"] == kelas:
-            name = r["Nama Murid"]
+            name = clean_student_name(r["Nama Murid"])
             if r["Catatan"]:
                 name += f" ({r['Catatan']})"
             students.append(name)
