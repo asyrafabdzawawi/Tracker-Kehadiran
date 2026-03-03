@@ -231,7 +231,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             catatan = str(r.get("Catatan", "")).upper()
 
             if "(RMT)" in nama.upper() or "RMT" in catatan:
-                nama_bersih = nama.replace("(RMT)", "").strip()
+                nama_bersih = clean_student_name(nama.replace("(RMT)", "").strip())
                 all_rmt_students.add(nama_bersih)
 
                 if kelas not in rmt_by_class:
