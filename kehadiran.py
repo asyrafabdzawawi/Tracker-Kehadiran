@@ -1024,8 +1024,8 @@ def main():
 
     app.job_queue.run_daily(
         auto_reminder_unupdated_classes,
-        time=time(10, 30, tzinfo=ZoneInfo("Asia/Kuala_Lumpur")),
-        days=(6,0,1,2,3)
+        time=time(10, 48, tzinfo=ZoneInfo("Asia/Kuala_Lumpur")),
+        days=(6,0,1,2,3,4)
     )
 
     app.add_handler(CommandHandler("start", start))
