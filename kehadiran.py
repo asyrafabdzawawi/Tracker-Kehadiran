@@ -942,7 +942,7 @@ async def auto_send_friday_report(context: ContextTypes.DEFAULT_TYPE):
     summary, top3 = generate_weekly_summary()
     decline = detect_decline_two_weeks()
 
-    msg = "📡 AUTO LAPORAN KEHADIRAN MINGGUAN\n\n"
+    msg = "📡 LAPORAN KEHADIRAN MINGGUAN\n\n"
 
     if top3:
         msg += "🏆 Top 3 Mingguan\n"
@@ -954,7 +954,7 @@ async def auto_send_friday_report(context: ContextTypes.DEFAULT_TYPE):
     msg += summary
 
     if decline:
-        msg += "\n\n🧠 2 Minggu Menurun:\n"
+        msg += "\n\n🧠 Kehadiran Menurun:\n"
         for k in decline:
             msg += f"⚠️ {k}\n"
 
@@ -1024,8 +1024,8 @@ def main():
 
     app.job_queue.run_daily(
         auto_reminder_unupdated_classes,
-        time=time(10, 20, tzinfo=ZoneInfo("Asia/Kuala_Lumpur")),
-        days=(6,0,1,2,3)  # Isnin hingga Jumaat
+        time=time(10, 30, tzinfo=ZoneInfo("Asia/Kuala_Lumpur")),
+        days=(6,0,1,2,3)
     )
 
     app.add_handler(CommandHandler("start", start))
