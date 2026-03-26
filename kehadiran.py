@@ -954,7 +954,7 @@ async def auto_send_friday_report(context: ContextTypes.DEFAULT_TYPE):
     msg += summary
 
     if decline:
-        msg += "\n\n🧠 Kehadiran Menurun:\n"
+        msg += "\n\n⬇️ Kehadiran Menurun:\n"
         for k in decline:
             msg += f"⚠️ {k}\n"
 
