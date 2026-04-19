@@ -1007,9 +1007,22 @@ async def auto_reminder_unupdated_classes(context: ContextTypes.DEFAULT_TYPE):
 # MAIN
 # ======================
 
+async def set_dashboard_menu(app):
+
+    dashboard_url = "https://dashboardkehadiran.vercel.app/"
+
+    await app.bot.set_chat_menu_button(
+        menu_button=MenuButtonWebApp(
+            text="📊 Dashboard",
+            web_app=WebAppInfo(url=dashboard_url)
+        )
+    )
+
+    print("✅ Dashboard menu button set!")
 
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
+    app.post_init = set_dashboard_menu
 
     dashboard_url = "https://dashboardkehadiran.vercel.app/"
 
