@@ -17,6 +17,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import time
 from zoneinfo import ZoneInfo
+from telegram import WebAppInfo, MenuButtonWebApp
 
 
 # ======================
@@ -1009,6 +1010,15 @@ async def auto_reminder_unupdated_classes(context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
+
+    dashboard_url = "https://dashboardkehadiran.vercel.app/"
+
+    app.bot.set_chat_menu_button(
+        menu_button=MenuButtonWebApp(
+            text="📊 Dashboard",
+            web_app=WebAppInfo(url=dashboard_url)
+        )
+    )
 
     # Auto Jumaat 2PM (Malaysia Time)
     
