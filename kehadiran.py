@@ -17,7 +17,6 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import time
 from zoneinfo import ZoneInfo
-from telegram import WebAppInfo, MenuButtonWebApp
 
 
 # ======================
@@ -186,8 +185,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     [InlineKeyboardButton("📊 Statistik Kehadiran", callback_data="smart_statistik")]
     ]
 
-    reply_keyboard = ReplyKeyboardMarkup([[KeyboardButton("🏠 Menu Utama")]], resize_keyboard=True)
-
+    reply_keyboard = ReplyKeyboardMarkup(
+        [
+            [KeyboardButton("🏠 Menu Utama")],
+            [KeyboardButton("📊 Dashboard")]
+        ],
+        resize_keyboard=True
+    )
     quote = get_random_quote()
 
     text = (
@@ -938,6 +942,11 @@ async def handle_menu_button(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user_state.pop(update.message.from_user.id, None)
         await start(update, context)
 
+    elif update.message.text.strip() == "📊 Dashboard":
+        await update.message.reply_text(
+            "📊 Klik link di bawah untuk buka dashboard:\n\nhttps://dashboardkehadiran.vercel.app/"
+        )
+
 async def auto_send_friday_report(context: ContextTypes.DEFAULT_TYPE):
 
     summary, top3 = generate_weekly_summary()
@@ -1007,31 +1016,9 @@ async def auto_reminder_unupdated_classes(context: ContextTypes.DEFAULT_TYPE):
 # MAIN
 # ======================
 
-async def set_dashboard_menu(app):
-
-    dashboard_url = "https://dashboardkehadiran.vercel.app/"
-
-    await app.bot.set_chat_menu_button(
-        menu_button=MenuButtonWebApp(
-            text="📊 Dashboard",
-            web_app=WebAppInfo(url=dashboard_url)
-        )
-    )
-
-    print("✅ Dashboard menu button set!")
 
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
-    app.post_init = set_dashboard_menu
-
-    dashboard_url = "https://dashboardkehadiran.vercel.app/"
-
-    app.bot.set_chat_menu_button(
-        menu_button=MenuButtonWebApp(
-            text="📊 Dashboard",
-            web_app=WebAppInfo(url=dashboard_url)
-        )
-    )
 
     # Auto Jumaat 2PM (Malaysia Time)
     
