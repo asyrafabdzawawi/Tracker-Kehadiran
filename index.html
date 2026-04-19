@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Kehadiran</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: white;
+    text-align: center;
+}
+
+.card {
+    background: #1e293b;
+    padding: 20px;
+    margin: 15px;
+    border-radius: 15px;
+}
+
+h1 { font-size: 40px; }
+</style>
+</head>
+
+<body>
+
+<h1>📊 Dashboard Kehadiran</h1>
+
+<div class="card">
+    <h2>📅 Kehadiran Hari Ini</h2>
+    <h1 id="percent">Loading...</h1>
+    <p id="total"></p>
+</div>
+
+<div class="card">
+    <h2>🏆 Top 3 Kelas</h2>
+    <ul id="ranking"></ul>
+</div>
+
+<div class="card">
+    <h2>⚠️ Belum Isi</h2>
+    <ul id="alert"></ul>
+</div>
+
+<div class="card">
+    <h2>📈 Trend 7 Hari</h2>
+    <canvas id="chart"></canvas>
+</div>
+
+<script>
+
+const URL = "https://opensheet.elk.sh/1KPsN_fdh7b1rj-6fJOljPdcn87Tz2qmh-iMwUhwPrbg/Kehadiran";
+
+const ALL_CLASSES = [
+"1 Amber","1 Amethyst","1 Aquamarine",
+"2 Amber","2 Amethyst","2 Aquamarine",
+"3 Amber","3 Amethyst","3 Aquamarine",
+"4 Amber","4 Amethyst","4 Aquamarine",
+"5 Amber","5 Amethyst","5 Aquamarine",
+"6 Amber","6 Amethyst","6 Aquamarine"
+];
+
+async function loadData() {
+
+    const res = await fetch(URL);
+    const data = await res.json();
+
+    const today = new Date().toLocaleDateString("en-GB");
+
+    let total = 0;
+    let hadir = 0;
+    let kelasStat = {};
+    let dates = {};
+    let recordedToday = [];
+
+    data.forEach(r => {
+
+        const jumlah = Number(r.Jumlah);
+        const absent = r["Tidak Hadir"] ? r["Tidak Hadir"].split(",").length : 0;
+        const hadirNow = jumlah - absent;
+
+        // TODAY
+        if (r.Tarikh === today) {
+            total += jumlah;
+            hadir += hadirNow;
+            recordedToday.push(r.Kelas.toLowerCase());
+        }
+
+        // RANKING
+        if (!kelasStat[r.Kelas]) {
+            kelasStat[r.Kelas] = {h:0,t:0};
+        }
+        kelasStat[r.Kelas].h += hadirNow;
+        kelasStat[r.Kelas].t += jumlah;
+
+        // TREND
+        if (!dates[r.Tarikh]) {
+            dates[r.Tarikh] = {h:0,t:0};
+        }
+        dates[r.Tarikh].h += hadirNow;
+        dates[r.Tarikh].t += jumlah;
+
+    });
+
+    // 📊 TODAY DISPLAY
+    const percent = total ? ((hadir/total)*100).toFixed(1) : 0;
+    document.getElementById("percent").innerText = percent + "%";
+    document.getElementById("total").innerText = `${hadir} / ${total} murid`;
+
+    // 🏆 RANKING
+    let ranking = Object.entries(kelasStat).map(([k,v])=>{
+        return [k, (v.h/v.t)*100];
+    });
+
+    ranking.sort((a,b)=>b[1]-a[1]);
+
+    const medal = ["🥇","🥈","🥉"];
+    const top3 = ranking.slice(0,3);
+
+    const ul = document.getElementById("ranking");
+    ul.innerHTML = "";
+
+    top3.forEach((r,i)=>{
+        ul.innerHTML += `<li>${medal[i]} ${r[0]} - ${r[1].toFixed(1)}%</li>`;
+    });
+
+    // ⚠️ ALERT
+    const belum = ALL_CLASSES.filter(k => !recordedToday.includes(k.toLowerCase()));
+
+    const alertBox = document.getElementById("alert");
+    alertBox.innerHTML = "";
+
+    belum.forEach(k=>{
+        alertBox.innerHTML += `<li>❌ ${k}</li>`;
+    });
+
+    // 📈 CHART
+    const labels = Object.keys(dates).slice(-7);
+    const values = labels.map(d => (dates[d].h/dates[d].t)*100);
+
+    new Chart(document.getElementById("chart"), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Trend Kehadiran (%)',
+                data: values
+            }]
+        }
+    });
+
+}
+
+loadData();
+
+// 📺 AUTO REFRESH
+setInterval(() => location.reload(), 10000);
+
+</script>
+
+</body>
+</html>
