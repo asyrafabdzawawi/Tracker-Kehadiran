@@ -52,11 +52,7 @@ user_state = {}
 # SWEET QUOTES
 # ======================
 SWEET_QUOTES = [
-    "🌙✨ Selamat menunaikan ibadah puasa, semoga Ramadan kali ini membawa keberkatan yang melimpah, ketenangan dalam hati, kesihatan yang baik serta pahala yang berlipat ganda buat kita semua 🤲💖",
-    "🕌🌟 Salam Ramadan Al-Mubarak, semoga setiap amalan yang kita lakukan sepanjang bulan mulia ini diterima Allah SWT dan menjadi asbab kebaikan di dunia serta akhirat 🤲📖✨",
-    "🕌💚 Ramadan yang penuh barakah ini semoga mendidik hati kita menjadi lebih sabar, lebih bersyukur dan lebih dekat kepada Allah SWT dalam setiap keadaan 🤲✨",
-    "🌙🤍 Selamat berpuasa, semoga kita diberikan kekuatan menahan lapar dan dahaga, kesabaran dalam menghadapi ujian serta keikhlasan dalam setiap ibadah yang dilakukan 💫🤲",
-    "🌅🍽️ Semoga setiap waktu sahur dan berbuka menjadi saat yang penuh makna, mengeratkan silaturahim serta mengundang keberkatan dalam keluarga tercinta 🌙💞",
+    "📊Untuk semakan realtime data kehadiran cikgu boleh rujuk kepada dashboard kehadiran.",
 ]
 
 def get_random_quote():
