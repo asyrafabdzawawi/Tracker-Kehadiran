@@ -1008,6 +1008,22 @@ async def auto_reminder_unupdated_classes(context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=GROUP_ID, text=msg)
     except Exception:
         pass
+
+async def send_fire_drill_link(context: ContextTypes.DEFAULT_TYPE):
+
+    msg = (
+        "🚨 LATIHAN KEBAKARAN BERMULA 🚨\n\n"
+        "📅 22 April 2026\n"
+        "⏰ 8:45 pagi\n\n"
+        "Klik pautan di bawah:\n"
+        "https://latihankebakaran.vercel.app/\n\n"
+        "⚠️ Sila pastikan keselamatan murid-murid SK Labu Besar."
+    )
+
+    await context.bot.send_message(
+        chat_id=GROUP_ID,
+        text=msg
+    )
 # ======================
 # MAIN
 # ======================
@@ -1032,6 +1048,13 @@ def main():
         auto_reminder_unupdated_classes,
         time=time(10, 00, tzinfo=ZoneInfo("Asia/Kuala_Lumpur")),
         days=(6,0,1,2,3,4)
+    )
+
+    from datetime import datetime
+
+    app.job_queue.run_once(
+        send_fire_drill_link,
+        when=datetime(2026, 4, 22, 8, 45, tzinfo=ZoneInfo("Asia/Kuala_Lumpur"))
     )
 
     app.add_handler(CommandHandler("start", start))
