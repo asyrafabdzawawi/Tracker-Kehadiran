@@ -578,8 +578,26 @@ async def show_calendar(query, user_id):
     for _ in range(start_weekday):
         row.append(InlineKeyboardButton(" ", callback_data="noop"))
 
+    today = get_today_malaysia()
+
     for day in range(1, days_in_month + 1):
-        row.append(InlineKeyboardButton(str(day), callback_data=f"cal_day|{year}|{month}|{day}"))
+
+        label = str(day)
+
+        if (
+            day == today.day
+            and month == today.month
+            and year == today.year
+        ):
+            label = f"{day}🟢"
+
+        row.append(
+            InlineKeyboardButton(
+                label,
+                callback_data=f"cal_day|{year}|{month}|{day}"
+            )
+        )
+
         if len(row) == 7:
             keyboard.append(row)
             row = []
