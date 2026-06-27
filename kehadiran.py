@@ -580,18 +580,10 @@ async def show_calendar(query, user_id):
 
     today = get_today_malaysia()
 
-    print("TODAY =", today)
-    print("YEAR =", year)
-    print("MONTH =", month)
 
     for day in range(1, days_in_month + 1):
 
-        print("CHECK:", day, today.day)
         label = str(day)
-
-        
-        if day == today.day:
-            print("DAY MATCH:", day)
 
         if (
             day == today.day
